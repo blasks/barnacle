@@ -1,2 +1,2 @@
-# TensorCluster
-Python package for developing clustering methods that work for tensor structured data
+# ncistd
+N-dimensional Clustering of Incomplete data by Sparse Tensor Decomposition
