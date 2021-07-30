@@ -1,7 +1,7 @@
 """The simulation module contains tools for generating tensors of simulated cluster data based on several different models"""
 import itertools
 import numpy as np
-import scipy
+from scipy.stats import rv_continuous
 from tensorly.random import check_random_state
 
 ##########
@@ -45,7 +45,7 @@ class BlockModel:
         # Check method is valid
         return 
         
-    def generate_clusters(self, marginals_distribution: scipy.stats.rv_continuous, random_state=None) -> [Cluster]:
+    def generate_clusters(self, marginals_distribution: rv_continuous, random_state=None) -> [Cluster]:
         """Generate Cluster objects from parameters
         
         Arguments
@@ -139,7 +139,7 @@ class OverlappingBlockModel:
         # Check mode is valid
         return 
         
-    def generate_clusters(self, value_distribution: scipy.stats.rv_continuous, random_state=None) -> [Cluster]:
+    def generate_clusters(self, value_distribution: rv_continuous, random_state=None) -> [Cluster]:
         # initialize attributes
         self.clusters = list()
         # check random state
