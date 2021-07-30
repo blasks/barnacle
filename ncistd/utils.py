@@ -7,36 +7,77 @@ from sklearn.metrics import jaccard_score
 from tensorly.random import check_random_state
 
 ##########
-# plot interactive cube with plotly
+# Function to plot interactive visualization of 3d tensor
 ##########
-def visualize_tensor(model, shell=True, midpoint=None, range_color=None, opacity=0.5, aspectmode='data'):
+def visualize_3d_tensor(tensor, 
+                        shell=True, 
+                        midpoint=None, 
+                        range_color=None, 
+                        opacity=0.5, 
+                        aspectmode='data'):
+    """Plot an interactive visualization of a 3d tensor using plotly
+    
+        This method uses the plotly.express.scatter_3d() function to plot a 
+        visualization of the input data tensor. It is intended primarily for 
+        use with three dimensional tensors, but can handle lower dimensional 
+        data as well.
+    
+    Parameters
+    ----------
+    tensor : 3 dimensional numpy.ndarray 
+        Three dimensional numpy array containing tensor data
+    shell : bool
+        Plot only the points on the outer sides of the tensor. Default is True.
+    midpoint : float, optional
+        Midpoint value of the color scale, coded white.
+    range_color : 2-tuple, optional
+        Range of the color scale, formatted (low, high).
+    opacity : float
+        Opacity of the points on the plot, ranges from 0 to 1. Default is 0.5.
+    aspectmode : {'data', 'cube', 'auto'}
+        Option passed to plotly to control the proportions of the axes:
+            'data' : axes are in proportion to the data ranges
+            'cube' : axes are drawn as a cube, regardless of data ranges
+            'auto' : 'data' if no axis is > 4x any other axis, otherwise 'cube'
+        Default is 'data'.
+            
+    Returns
+    -------
+    fig : plotly.graph_objs._figure.Figure
+        Plotly figure object. A number of options are available to this object, 
+        including show() and save().
+    """
     data = dict()
     axis_columns = []
-    for i, v in enumerate(np.indices(model.shape)):
+    for i, v in enumerate(np.indices(tensor.shape)):
         axis = 'axis{}'.format(i)
         axis_columns.append(axis)
         data.update({axis: v.flatten()})
-    data.update({'expression': model.flatten()})
-    data.update({'abs_exp': np.abs(model.flatten())})
+    data.update({'expression': tensor.flatten()})
+    data.update({'abs_exp': np.abs(tensor.flatten())})
     # make dataframe
     df = pd.DataFrame(data)
     # down-select only outer indices
     if shell:
+        # mask all but the indices with a zero in them
         mask = df[axis_columns].eq(0).any(axis=1)
         for col in axis_columns:
+            # add in the max index for each dimension
             mask = np.any([mask, df[col].eq(df[col].max())], axis=0)
         df = df[mask]
     # make the figure 
-    fig = scatter_3d(df, x='axis0', y='axis1', z='axis2', color='expression', size='abs_exp', 
-                        opacity=opacity, color_continuous_scale='RdBu_r', color_continuous_midpoint=midpoint, 
-                        range_color=range_color)
+    fig = scatter_3d(df, x='axis0', y='axis1', z='axis2', color='expression', 
+                     size='abs_exp', opacity=opacity, 
+                     color_continuous_scale='RdBu_r', 
+                     color_continuous_midpoint=midpoint, 
+                     range_color=range_color)
     fig.update_layout(scene=dict(xaxis=dict(showbackground=False), 
                                  yaxis=dict(showbackground=False), 
                                  zaxis=dict(showbackground=False), 
-                                 aspectmode='data'), 
+                                 aspectmode=aspectmode), 
                       width=700)
     fig.update_traces(marker=dict(line=dict(color=None, width=0)))
-    return fig, df
+    return fig
 
 ##########
 # function to permute tensor
