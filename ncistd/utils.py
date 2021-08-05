@@ -79,6 +79,7 @@ def visualize_3d_tensor(tensor,
     fig.update_traces(marker=dict(line=dict(color=None, width=0)))
     return fig
 
+
 ##########
 # function to permute tensor
 ##########

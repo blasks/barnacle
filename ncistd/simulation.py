@@ -1,7 +1,9 @@
 """The simulation module contains tools for generating tensors of simulated 
 cluster data based on several different models"""
 import numpy as np
+import itertools
 from tensorly.random import check_random_state
+from tensorly.tenalg import outer
 from tensorly.cp_tensor import CPTensor
 
 
@@ -12,6 +14,15 @@ class Cluster:
     """Object to contain indices and value of model cluster
     """
     def __init__(self, indices, value):
+        """Initialize a Cluster object
+        
+        Parameters
+        ----------
+        indices : list of one-dimensional np.ndarray objects
+            Indices of cluster membership in each dimension
+        value : float
+            Cluster value
+        """
         self.indices = indices
         self.value = value
         self.dim = len(self.indices)
@@ -24,7 +35,54 @@ class Cluster:
         return [len(index) for index in self.indices]
 
     def size(self):
-        return np.product([len(index) for index in self.indices])    
+        return np.product([len(index) for index in self.indices])
+    
+    def to_tensor(self, supertensor_shape=None):
+        """Generate a tensor from the Cluster indices and value.
+        
+        Parameters
+        ----------
+        supertensor_shape : list
+            The shape of the supertensor in which to embed the Cluster tensor.
+            Must be greater than or equal to the dimensionality of the Cluster.
+            Each supertensor dimension must be greater than or equal to the 
+            maximum index value of the corresponding Cluster dimension.
+        
+        Returns
+        -------
+        data : numpy.ndarray
+            Tensorized Cluster formatted in an n-dimensional numpy array.
+        """
+        cluster_bounds = [(np.min(idx), np.max(idx)) for idx in self.indices]
+        # check supertensor_shape
+        if supertensor_shape is None:
+            supertensor_shape = [h - l + 1 for (l, h) in cluster_bounds]
+            # set offset to minimum index of each dimension
+            offset = [l for (l, _) in cluster_bounds]
+        # check that supertensor_shape >= Cluster.dim
+        elif len(supertensor_shape) < self.dim:
+            raise ValueError('The supertensor_shape {} cannot contain '
+                             '{}'.format(supertensor_shape, self))
+        # check that each range fits the corresponding cluster dimension
+        else:
+            for i, size in enumerate(supertensor_shape):
+                if size < cluster_bounds[i][1]:    # max index
+                    raise ValueError('Dimension {} of size {} cannot contain '
+                                     'the index of the corresponding Cluster '
+                                     'dimension: {}'.format(i, 
+                                                            size, 
+                                                            self.indices[i]))
+            # set offset to zero
+            offset = [0 for i in range(self.dim)]
+        # make vectors from supertensor_shape
+        vectors = [np.zeros(shape) for shape in supertensor_shape]
+        for i, idx in enumerate(self.indices):
+            vectors[i][idx - offset[i]] = 1
+        # tensorize 
+        tensor = self.value * outer(vectors)
+        return tensor
+        
+                
         
         
 ##########
@@ -81,7 +139,7 @@ class SimulationTensor(CPTensor):
             data += noise
             return data
         
-    def clusters(self):
+    def get_clusters(self):
         """Generate list of Cluster objects from model factors."""
         clusters = []
         for i in range(self.rank):
@@ -94,12 +152,12 @@ class SimulationTensor(CPTensor):
 ##########
 # Function to generate Overlapping Block Model
 ##########
-def generate_overlapping_block_model(shape, 
-                                     rank, 
-                                     value_distribution, 
-                                     cluster_size_bounds=None, 
-                                     contiguous_clusters=False, 
-                                     random_state=None):
+def overlapping_block_model(shape, 
+                            rank, 
+                            value_distribution, 
+                            cluster_size_bounds=None, 
+                            contiguous_clusters=False, 
+                            random_state=None):
     """Generate an Overlapping Block Model.
     
         Returns a SimulationTensor object parameterized with input Overlapping 
