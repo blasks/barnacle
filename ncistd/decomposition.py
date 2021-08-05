@@ -2,7 +2,7 @@ import numpy as np
 from spams import lasso, lassoMask
 import tensorly as tl 
 from tensorly import unfold
-from tensorly.cp_tensor import CPTensor
+from tensorly.cp_tensor import CPTensor, cp_to_tensor
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from tensorly.tenalg import khatri_rao
@@ -29,12 +29,12 @@ def als_lasso(tensor,
               mask=None,  
               n_iter_max=100, 
               init='random', 
-              normalize_factors=False, 
-              tol=1e-8, 
+              normalize_factors='l2', 
+              tolerance=1e-6, 
               random_state=None, 
               verbose=0, 
               return_errors=False, 
-              cvg_criterion='abs_rec_error'):
+              cvg_criterion='rec_error'):
     """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
     Computes a rank-`rank` decomposition of `tensor` such that::
@@ -60,21 +60,25 @@ def als_lasso(tensor,
         Type of factor matrix initialization.
         If a CPTensor is passed, this is directly used for initalization.
         See `initialize_factors`.
-    normalize_factors : if True, aggregate the weights of each factor in a 1D-tensor
-        of shape (rank, ), which will contain the norms of the factors
-    tol : float, optional
-        (Default: 1e-6) Relative reconstruction error tolerance. The
+    normalize_factors : {'l2', 'max', None}
+        Method by which factors will be normalized, with normalization values
+        being stored in `weights`. If `normalize_factors`=None, no normalization
+        will be computed and `weights` will be returned as a vector of ones.
+        Default is `normalize_factors`='l2'. 
+    tolerance : float, optional
+        (Default: 1e-6) Convergence tolerance. The
         algorithm is considered to have found the global minimum when the
-        reconstruction error is less than `tol`.
+        convergence criterion is less than `tolerance`.
     random_state : {None, int, numpy.random.RandomState}
     verbose : int, optional
         Level of verbosity
     return_errors : bool, optional
         Activate return of iteration errors
-    cvg_criterion : {'abs_rec_error', 'rec_error'}, optional
-       Stopping criterion for ALS, works if `tol` is not None. 
-       If 'rec_error',  ALS stops at current iteration if ``(previous rec_error - current rec_error) < tol``.
-       If 'abs_rec_error', ALS terminates when `|previous rec_error - current rec_error| < tol`.
+    cvg_criterion : {'rec_error', 'norm'}, optional
+        Stopping criterion for ALS, works if `tol` is not None. 
+        'rec_error' : `|previous rec_error - current rec_error| < tol`
+        'norm' : `|previous norm(tensor) - current norm(tensor)| < tol`
+            Only works if there are masked values to be imputed.
 
     Returns
     -------
@@ -92,7 +96,6 @@ def als_lasso(tensor,
         mask = np.ones_like(tensor)
     rec_errors = []
     modes_list = [mode for mode in range(tl.ndim(tensor))]
-    norm_tensor = tl.norm(tensor, 2)
 
     # initialize factors and weights
     weights, factors = initialize_cp(tensor, rank, init=init, 
@@ -103,28 +106,81 @@ def als_lasso(tensor,
     for iteration in range(n_iter_max):
         if verbose > 1:
             print('Starting iteration {}'.format(iteration + 1))
+        
+        # save previous tensor values if need be
+        if cvg_criterion == 'norm':
+            old_tensor = tensor
+            
+        # loop through modes
         for mode in modes_list:
             if verbose > 1:
                 print('Mode {} of {}'.format(mode, tl.ndim(tensor)))
+            
             # take the khatri_rao product of all factors except factors[mode]
             kr_product = khatri_rao(factors, weights, skip_matrix=mode)
+            # unfold data tensor and mask along mode
             X_unfolded = unfold(tensor, mode)
             mask_unfolded = unfold(mask, mode)
+            # generate new factor with lasso decomposition
             factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
                                       D=np.asfortranarray(kr_product), 
                                       B=np.asfortranarray(mask_unfolded.T), 
                                       lambda1=lambdas[mode])
-            # normalize new factor
-            # update factor
-            factors[mode] = factor_update.toarray().T
-            # update weights
             
+            # convert factor back to numpy array and transpose
+            factor_update = factor_update.toarray().T
+            
+            # normalize new factor
+            if normalize_factors == 'l2' or (iteration == 0 and normalize_factors == 'max'):
+                scales = tl.norm(factor_update, 2, axis=0)
+                # replace zeros with ones
+                weights = tl.where(scales==0, 
+                                   tl.ones(tl.shape(scales), 
+                                           **tl.context(factor_update)), 
+                                   scales)
+                factor_update = factor_update / tl.reshape(weights, (1, -1))
+            elif normalize_factors is 'max':
+                weights = np.max(factor_update, 0)
+                # WARNING: This will replace zero weights with 1 AS WELL AS 
+                # replacing weights between 0 and 1 with 1. Do I want this?
+                weights = np.max([weights, np.ones_like(weights)], 0)
+                factor_update = factor_update / tl.reshape(weights, (1, -1))
+            elif normalize_factors is None:
+                pass
+            else:
+                raise ValueError('Invalid option passed to `normalize_factors`')
+            
+            # update factor
+            factors[mode] = factor_update
+        
+        # build reconstruction from CP decomposition
+        reconstruction = cp_to_tensor((weights, factors))
+        # update completed tensor with most recent imputations
+        tensor = tensor * mask + reconstruction * (1 - mask)
+        # compute reconstruction error if needed
+        if cvg_criterion == 'rec_error' or return_errors:
+            # compute normalized reconstruction error
+            rec_error = tl.norm(tensor - reconstruction, 2) / tl.norm(tensor, 2)
+            rec_errors.append(rec_error)
+            if verbose:
+                print('reconstruction error: {}'.format(rec_errors[-1]))
+        
         # check convergence
-        
-        
+        if tolerance != 0 and iteration != 0:
+            if cvg_criterion == 'rec_error':
+                fit_change = abs(rec_error[-2] - rec_error[-1])
+            elif cvg_criterion == 'norm':
+                fit_change = tl.norm(old_tensor - tensor, 2)
+            else:
+                raise ValueError('Invalid convergence criterion: {}'.format(cvg_criterion))
+            # compare fit change to tolerance
+            if fit_change < tolerance:
+                if verbose:
+                    print('Algorithm converged after {} iterations'.format(iteration))
+                break
         
     # return result
-    cptensor = CPTensor(weights, factors)
+    cp_tensor = CPTensor((weights, factors))
     if return_errors:
         return cp_tensor, rec_errors
     else:
