@@ -26,6 +26,7 @@ from tensorly.tenalg import khatri_rao
 def als_lasso(tensor, 
               rank, 
               lambdas, 
+              pos_modes=None, 
               mask=None,  
               n_iter_max=100, 
               init='random', 
@@ -46,9 +47,11 @@ def als_lasso(tensor,
         Input data tensor.
     rank  : int
         Number of components.
-    lambdas : numpy.array
+    lambdas : [float]
         Vector of length tensor.ndim in which lambda[i] is the l1 sparsity 
         parameter for factor[i].
+    pos_modes : [int]
+        List of modes to force to be non-negative. Default is None.
     mask : numpy.ndarray
         array of booleans with the same shape as ``tensor`` should be 0 where
         the values are missing and 1 everywhere else. Note:  if tensor is
@@ -91,13 +94,22 @@ def als_lasso(tensor,
     errors : list
         A list of reconstruction errors at each iteration of the algorithms.
     """
-    # get all the parts ready
+    # get mask ready
     if mask is None:
         mask = np.ones_like(tensor, dtype=bool)
     else:
         # make sure mask is boolean type
         mask = np.array(mask, dtype=bool)
-    
+        
+    # set modes to be non-negative
+    if pos_modes is None:
+        nonneg = [False for i in range(tensor.ndim)]
+    else:
+        nonneg = [True if i in pos_modes else False for i in range(tensor.ndim)]
+        
+    # double check lambdas are floats
+    lambdas = np.array(lambdas, dtype=float)
+        
     # initialize list to store reconstruction errors
     rec_errors = []
 
@@ -131,12 +143,14 @@ def als_lasso(tensor,
                 factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
                                         D=np.asfortranarray(kr_product),  
                                         B=np.asfortranarray(mask_unfolded.T), 
-                                        lambda1=lambdas[mode])
+                                        lambda1=lambdas[mode], 
+                                        pos=nonneg[mode])
             else: 
                 # generate new factor with lasso decomposition (no mask)
                 factor_update = lasso(X=np.asfortranarray(X_unfolded.T), 
                                       D=np.asfortranarray(kr_product), 
-                                      lambda1=lambdas[mode])
+                                      lambda1=lambdas[mode], 
+                                      pos=nonneg[mode])
             
             # convert factor back to numpy array and transpose
             factor_update = factor_update.toarray().T
