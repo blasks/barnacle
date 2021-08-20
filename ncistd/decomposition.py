@@ -133,7 +133,7 @@ def als_lasso(tensor,
                 print('Mode {} of {}'.format(mode, tl.ndim(tensor)))
             
             # take the khatri_rao product of all factors except factors[mode]
-            kr_product = khatri_rao(factors, weights, skip_matrix=mode)
+            kr_product = khatri_rao(factors, None, skip_matrix=mode)
             # unfold data tensor and mask along mode
             X_unfolded = unfold(tensor, mode)
             if iteration == 0:
