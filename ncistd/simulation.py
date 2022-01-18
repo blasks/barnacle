@@ -2,7 +2,7 @@
 cluster data based on several different models"""
 import numpy as np
 import itertools
-from tensorly.random import check_random_state
+from tensorly import check_random_state
 from tensorly.tenalg import outer
 from tensorly.cp_tensor import CPTensor
 

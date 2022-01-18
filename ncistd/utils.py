@@ -4,7 +4,7 @@ import pandas as pd
 import tensorly as tl
 from plotly.express import scatter_3d
 from sklearn.metrics import jaccard_score
-from tensorly.random import check_random_state
+from tensorly import check_random_state
 
 ##########
 # Function to plot interactive visualization of 3d tensor
