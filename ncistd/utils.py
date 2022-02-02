@@ -79,6 +79,19 @@ def visualize_3d_tensor(tensor,
     fig.update_traces(marker=dict(line=dict(color=None, width=0)))
     return fig
 
+##########
+# function to generate tensorly CPTensor of all zeros
+##########
+def zeros_cp_tensor(shape, rank):
+    """Return tensorly.CPTensor of all zeros of the specified
+    size and rank.
+    """
+    weights = tl.zeros(rank)
+    factors = []
+    for dim in shape:
+        factors.append(tl.zeros([dim, rank]))
+    return(CPTensor((weights, factors)))
+
 
 ##########
 # function to permute tensor

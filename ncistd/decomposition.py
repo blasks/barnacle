@@ -6,27 +6,110 @@ from tensorly.cp_tensor import CPTensor, cp_to_tensor
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from tensorly.tenalg import khatri_rao
+# from .utils import zeros_cp
 
-# class SparseCP(DecompositionMixin):
-#     """Sparse Candecomp-Parafac decomposition 
+##########
+# function to generate tensorly CPTensor of all zeros
+# NOTE: This is redundant - need to figure this out later
+##########
+def zeros_cp(shape, rank):
+    """Return tensorly.CPTensor of all zeros of the specified
+    size and rank.
+    """
+    weights = tl.zeros(rank)
+    factors = []
+    for dim in shape:
+        factors.append(tl.zeros([dim, rank]))
+    return(CPTensor((weights, factors)))
+
+class SparseCP(DecompositionMixin):
+    """Sparse Candecomp-Parafac decomposition 
     
-#     """
-#     def __init__(self, rank, init='random'):
-#         self.rank = rank
-#         self.init = init
+    """
+    def __init__(self, max_rank, lambdas, nonneg_modes=None, 
+                 n_iter_max=100, init='random', normalize_factors='l2', 
+                 tolerance=1e-6, random_state=None, verbose=0, 
+                 cvg_criterion='rec_error'):
+        self.max_rank = max_rank
+        self.lambdas = lambdas
+        self.nonneg_modes = nonneg_modes
+        self.n_iter_max = n_iter_max
+        self.init = init
+        self.normalize_factors = normalize_factors
+        self.tolerance = tolerance
+        self.random_state = random_state
+        self.verbose = verbose
+        self.cvg_criterion = cvg_criterion
         
-#     def fit_transform(self, X):
-#         self.decomposition_ = modified_als(X, rank=self.rank, init=self.init)
-#         return self.decomposition_
+    def fit_transform(self, X, mask=None, return_errors=True):
+        """Fit model to data using deflation algorithm with optional mask
+        Parameters
+        ----------
+        self : SparseCP
+            Initialized model
+        X : numpy.ndarray
+            Input data tensor to fit
+        mask : numpy.ndarray
+            Array of booleans with the same shape as X. Should be 0 where
+            the values are missing and 1 everywhere else. 
+            Allows for missing values.
+        return_errors : bool, optional
+            Activate return of iteration errors
+            
+        Returns
+        -------
+        decomposition : tensorly.CPTensor
+            A CPTensor of the decomposition, where each factor is derived
+            from each successive deflation up to ``self.max_rank`` iterations.
+        errors : list
+            A list of reconstruction errors at each iteration of the algorithm.
+        """
+        if return_errors:
+            error_list = []
+        decomposition = zeros_cp(X.shape, self.max_rank)
+        residual_tensor = X.copy()
+        ndim = len(X.shape)
+        for r in range(self.max_rank):
+            if self.verbose > 0:
+                print('Fitting factor {}'.format(r))
+            layer, errors = als_lasso(tensor=residual_tensor, 
+                                    rank=1, 
+                                    lambdas=self.lambdas, 
+                                    nonneg_modes=self.nonneg_modes, 
+                                    mask=mask, 
+                                    n_iter_max=self.n_iter_max, 
+                                    init=self.init, 
+                                    normalize_factors=self.normalize_factors, 
+                                    tolerance=self.tolerance, 
+                                    random_state=self.random_state, 
+                                    verbose=self.verbose - 1, 
+                                    return_errors=True, 
+                                    cvg_criterion=self.cvg_criterion
+                                    )
+            # update weights with layer weight
+            decomposition.weights[r] = layer.weights[0]
+            # update factors with layer factors
+            for d in range(ndim):
+                decomposition.factors[d][:, r] = layer.factors[d][:, 0]
+            # record errors
+            if return_errors:
+                error_list.append(errors)
+            # deflate residual tensor
+            residual_tensor = residual_tensor - layer.to_tensor()
+        self.decomposition_ = decomposition
+        if return_errors:
+            return decomposition, errors
+        else:
+            return decomposition
     
-#     def __repr__(self):
-#         return '{} decomposition of rank {}'.format(self.__class__.__name__, self.rank)
+    def __repr__(self):
+        return '{} decomposition with max rank {}'.format(self.__class__.__name__, self.max_rank)
     
 
 def als_lasso(tensor, 
               rank, 
               lambdas, 
-              pos_modes=None, 
+              nonneg_modes=None, 
               mask=None,  
               n_iter_max=100, 
               init='random', 
@@ -50,9 +133,9 @@ def als_lasso(tensor,
     lambdas : [float]
         Vector of length tensor.ndim in which lambda[i] is the l1 sparsity 
         parameter for factor[i].
-    pos_modes : [int]
+    nonneg_modes : [int]
         List of modes to force to be non-negative. Default is None.
-    mask : numpy.ndarray
+    mask : numpy.ndarray, optional
         array of booleans with the same shape as ``tensor`` should be 0 where
         the values are missing and 1 everywhere else. Note:  if tensor is
         sparse, then mask should also be sparse with a fill value of 1 (or
@@ -102,10 +185,10 @@ def als_lasso(tensor,
         mask = np.array(mask, dtype=bool)
         
     # set modes to be non-negative
-    if pos_modes is None:
+    if nonneg_modes is None:
         nonneg = [False for i in range(tensor.ndim)]
     else:
-        nonneg = [True if i in pos_modes else False for i in range(tensor.ndim)]
+        nonneg = [True if i in nonneg_modes else False for i in range(tensor.ndim)]
         
     # double check lambdas are floats
     lambdas = np.array(lambdas, dtype=float)
