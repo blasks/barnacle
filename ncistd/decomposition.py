@@ -28,7 +28,7 @@ class SparseCP(DecompositionMixin):
     """
     def __init__(self, max_rank, lambdas, nonneg_modes=None, 
                  n_iter_max=100, init='random', normalize_factors='l2', 
-                 tolerance=1e-6, random_state=None, verbose=0, 
+                 tolerance=1e-6, iter_thold=1, random_state=None, verbose=0, 
                  cvg_criterion='rec_error'):
         self.max_rank = max_rank
         self.lambdas = lambdas
@@ -37,6 +37,7 @@ class SparseCP(DecompositionMixin):
         self.init = init
         self.normalize_factors = normalize_factors
         self.tolerance = tolerance
+        self.iter_thold = iter_thold
         self.random_state = random_state
         self.verbose = verbose
         self.cvg_criterion = cvg_criterion
@@ -81,8 +82,9 @@ class SparseCP(DecompositionMixin):
                                     init=self.init, 
                                     normalize_factors=self.normalize_factors, 
                                     tolerance=self.tolerance, 
+                                    iter_thold=self.iter_thold, 
                                     random_state=self.random_state, 
-                                    verbose=self.verbose - 1, 
+                                    verbose=max(0, self.verbose - 1), 
                                     return_errors=True, 
                                     cvg_criterion=self.cvg_criterion
                                     )
@@ -98,7 +100,7 @@ class SparseCP(DecompositionMixin):
             residual_tensor = residual_tensor - layer.to_tensor()
         self.decomposition_ = decomposition
         if return_errors:
-            return decomposition, errors
+            return decomposition, error_list
         else:
             return decomposition
     
@@ -115,6 +117,7 @@ def als_lasso(tensor,
               init='random', 
               normalize_factors='l2', 
               tolerance=1e-6, 
+              iter_thold=1, 
               random_state=None, 
               verbose=0, 
               return_errors=False, 
@@ -154,7 +157,13 @@ def als_lasso(tensor,
     tolerance : float, optional
         (Default: 1e-6) Convergence tolerance. The
         algorithm is considered to have found the global minimum when the
-        convergence criterion is less than `tolerance`.
+        convergence criterion is less than `tolerance` for at least 
+        `iter_thold` iterations in a row.
+    iter_thold : int
+        (Default: 1) Convergence threshold. The
+        algorithm is considered to have found the global minimum when the
+        convergence criterion is less than `tolerance` for at least 
+        `iter_thold` iterations in a row.
     random_state : {None, int, numpy.random.RandomState}
     verbose : int, optional
         Level of verbosity
@@ -200,6 +209,9 @@ def als_lasso(tensor,
     weights, factors = initialize_cp(tensor, rank, init=init, 
                                      random_state=random_state, 
                                      normalize_factors=normalize_factors)
+    
+    # initialize convergence threshold count
+    conv_count = 0
     
     # begin iterations
     for iteration in range(n_iter_max):
@@ -270,7 +282,7 @@ def als_lasso(tensor,
             # compute normalized reconstruction error
             rec_error = tl.norm(tensor - reconstruction, 2) / tl.norm(tensor, 2)
             rec_errors.append(rec_error)
-            if verbose:
+            if verbose > 0:
                 print('reconstruction error: {}'.format(rec_errors[-1]))
         
         # check convergence
@@ -283,7 +295,13 @@ def als_lasso(tensor,
                 raise ValueError('Invalid convergence criterion: {}'.format(cvg_criterion))
             # compare fit change to tolerance
             if fit_change < tolerance:
-                if verbose:
+                # increment convergence count
+                conv_count += 1
+            else:
+                # reset convergence count to zero
+                conv_count = 0
+            if conv_count == iter_thold:
+                if verbose > 0:
                     print('Algorithm converged after {} iterations'.format(iteration))
                 break
         
