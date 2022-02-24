@@ -82,7 +82,7 @@ def visualize_3d_tensor(tensor,
 ##########
 # function to generate tensorly CPTensor of all zeros
 ##########
-def zeros_cp_tensor(shape, rank):
+def zeros_cp(shape, rank):
     """Return tensorly.CPTensor of all zeros of the specified
     size and rank.
     """
