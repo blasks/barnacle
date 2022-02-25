@@ -1,7 +1,7 @@
 import numpy as np
 from spams import lasso, lassoMask
 import tensorly as tl 
-from tensorly import unfold
+from tensorly import unfold, check_random_state
 from tensorly.cp_tensor import CPTensor, cp_to_tensor
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
@@ -28,7 +28,7 @@ class SparseCP(DecompositionMixin):
     """
     def __init__(self, max_rank, lambdas, nonneg_modes=None, 
                  n_iter_max=100, init='random', normalize_factors='l2', 
-                 tolerance=1e-6, iter_thold=1, random_state=None, verbose=0, 
+                 tolerance=1e-6, iter_thold=1, verbose=0, 
                  cvg_criterion='rec_error'):
         self.max_rank = max_rank
         self.lambdas = lambdas
@@ -38,11 +38,10 @@ class SparseCP(DecompositionMixin):
         self.normalize_factors = normalize_factors
         self.tolerance = tolerance
         self.iter_thold = iter_thold
-        self.random_state = random_state
         self.verbose = verbose
         self.cvg_criterion = cvg_criterion
         
-    def fit_transform(self, X, mask=None, return_errors=True):
+    def fit_transform(self, X, mask=None, return_errors=True, random_state=None):
         """Fit model to data using deflation algorithm with optional mask
         Parameters
         ----------
@@ -56,6 +55,7 @@ class SparseCP(DecompositionMixin):
             Allows for missing values.
         return_errors : bool, optional
             Activate return of iteration errors
+        random_state : {None, int, numpy.random.RandomState}
             
         Returns
         -------
@@ -65,6 +65,7 @@ class SparseCP(DecompositionMixin):
         errors : list
             A list of reconstruction errors at each iteration of the algorithm.
         """
+        rns = check_random_state(random_state)
         if return_errors:
             error_list = []
         decomposition = zeros_cp(X.shape, self.max_rank)
@@ -83,7 +84,7 @@ class SparseCP(DecompositionMixin):
                                     normalize_factors=self.normalize_factors, 
                                     tolerance=self.tolerance, 
                                     iter_thold=self.iter_thold, 
-                                    random_state=self.random_state, 
+                                    random_state=rns, 
                                     verbose=max(0, self.verbose - 1), 
                                     return_errors=True, 
                                     cvg_criterion=self.cvg_criterion
