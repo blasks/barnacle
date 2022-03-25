@@ -92,6 +92,63 @@ def zeros_cp(shape, rank):
         factors.append(tl.zeros([dim, rank]))
     return(CPTensor((weights, factors)))
 
+##########
+# function to generate random folds
+##########
+def random_folds(shape, folds, random_state=None):
+    """Generates ``folds`` random masks in same shape as tensor. Each mask represents a nearly even
+    fraction of the input tensor (remainder distributed), without overlap. 
+    
+    Tests: 
+    # Full coverage even split
+    test = np.zeros(shape)
+    for i in range(folds):
+        test = np.logical_or(test, ~masks[i])
+    assert np.all(test)
+    
+    # No overlaps
+    test = np.zeros(shape)
+    for i in range(folds):
+        test = np.logical_and(test, ~masks[i])
+    assert not np.any(test)
+    """
+    # initialize random generator
+    rns = check_random_state(random_state)
+    size = np.product(shape)
+    assert folds <= size, "The value of ``folds`` cannot exceed the size of the array."
+    n = size // folds
+    remainder = size % folds
+    # delineate indices of even groups
+    indices = np.cumsum([0] + [n+1 if i < remainder else n for i in range(folds)])
+    mask = np.zeros(size, dtype=int)
+    # mark off groups in parent mask
+    for i in range(folds):
+        mask[indices[i]:indices[i+1]] = i
+    rns.shuffle(mask)
+    # reshape parent mask
+    mask = mask.reshape(shape)
+    # generate mask children from parent mask
+    masks = []
+    for i in range(folds):
+        masks.append(mask != i)
+    return masks
+
+##########
+# function to generate random mask
+##########
+def random_mask(tensor, fraction_masked=0.0, random_state=None, dtype=bool):
+    """Generate random mask in same shape as tensor. True indicates unmasked
+    data point and False indicates masked data point.
+    """
+    # initialize random generator
+    rns = check_random_state(random_state)
+    mask = np.ones(tensor.size, dtype=int)
+    n_masked = int(mask.size * fraction_masked)
+    mask[:n_masked] = 0
+    rns.shuffle(mask)
+    # reshape and cast as requested data type
+    mask = mask.reshape(tensor.shape).astype(dtype)
+    return mask
 
 ##########
 # function to permute tensor
@@ -102,7 +159,6 @@ def permute_tensor(tensor, mode, random_state=None):
     for fiber in tl.unfold(tensor, mode).T:
         permuted_tensor.append(rns.permutation(fiber))
     return tl.fold(np.array(permuted_tensor).T, mode, tensor.shape) 
-
 
 ##########
 # function to generate and store empirical distribution of eigenvalues across a particular mode
@@ -126,7 +182,6 @@ def get_null_loadings(tensor, permutation_mode, n_permutations, decomposition_me
         null_factors.append(factors[permutation_mode])
     return np.array(null_factors).transpose(), np.array(null_weights)
 
-
 ##########
 # function to derive clusters from null loadings
 ##########
@@ -134,7 +189,6 @@ def extract_significant_loadings(factor, null_loadings, quantile=0.05):
     cluster = np.less(factor, np.quantile(null_loadings, quantile, axis=1))
     cluster = cluster + np.greater(factor, np.quantile(null_loadings, 1-quantile, axis=1))
     return cluster
-
 
 ##########
 # functions evaluate cluster recovery (Saelens et al.)
