@@ -73,7 +73,7 @@ class SparseCP(DecompositionMixin):
         ndim = len(X.shape)
         for r in range(self.max_rank):
             if self.verbose > 0:
-                print('Fitting factor {}'.format(r))
+                print('Fitting factor {}'.format(r), flush=True)
             layer, errors = als_lasso(tensor=residual_tensor, 
                                     rank=1, 
                                     lambdas=self.lambdas, 
@@ -229,12 +229,12 @@ def als_lasso(tensor,
     # begin iterations
     for iteration in range(n_iter_max):
         if verbose > 1:
-            print('Starting iteration {}'.format(iteration + 1))
+            print('Starting iteration {}'.format(iteration + 1), flush=True)
             
         # loop through modes
         for mode in range(tl.ndim(tensor)):
             if verbose > 1:
-                print('Mode {} of {}'.format(mode, tl.ndim(tensor)))
+                print('Mode {} of {}'.format(mode, tl.ndim(tensor)), flush=True)
             
             # take the khatri_rao product of all factors except factors[mode]
             kr_product = khatri_rao(factors, None, skip_matrix=mode)
@@ -291,7 +291,7 @@ def als_lasso(tensor,
             rec_error = tl.norm(mask * (tensor - reconstruction), 2) / masked_norm
             rec_errors.append(rec_error)
             if verbose > 0:
-                print('reconstruction error: {}'.format(rec_errors[-1]))
+                print('reconstruction error: {}'.format(rec_errors[-1]), flush=True)
         
         # check convergence
         if tolerance != 0 and iteration != 0:
@@ -308,11 +308,11 @@ def als_lasso(tensor,
                 conv_count = 0
             if conv_count == iter_thold:
                 if verbose > 0:
-                    print('Algorithm converged after {} iterations'.format(iteration+1))
+                    print('Algorithm converged after {} iterations'.format(iteration+1), flush=True)
                 break
         elif iteration == n_iter_max - 1:
             if verbose > 0:
-                print('Algorithm failed to converge after {} iterations'.format(iteration+1))
+                print('Algorithm failed to converge after {} iterations'.format(iteration+1), flush=True)
             
     # return result
     cp_tensor = CPTensor((weights, factors))
