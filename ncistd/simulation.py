@@ -239,6 +239,64 @@ def overlapping_block_model(shape,
     model = SimulationTensor((weights, factors))
     return model
 
+##########
+# Function to generate simulated sparse tensor
+##########
+
+def simulated_sparse_tensor(shape, 
+                            rank, 
+                            densities=None, 
+                            factor_rvs_list=None,  
+                            weights=None, 
+                            random_state=None):
+    """Generates simulated data in the form of a sparse cp_tensor
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        Tensor shape where len(shape) = n dimensions in tensor.
+    rank : int
+        The number of components in the tensor. 
+    densities : list of floats [0.0, 1.0], optional
+        The proportion of elements that are non-zero in the factor matrices. 
+        Must be the same length as the `shape` parameter.
+        If not set, the densities are set to 1 for fully dense factor matrices.
+    factor_rvs_list : list of callables, optional
+        Distributions from which the factor matrices will be drawn. Must be the
+        same length as the `shape` parameter and must accept
+        an integer argument specifying the number of random values to be drawn, 
+        and a `random_state` argument specifying state.
+        Example:
+            scipy.stats.uniform().rvs
+    weights : list of floats, optional
+        Weights to assign to each factor. If not set, then defaults to ones.
+    random_state : {None, int, np.random.RandomState}
+        Random state to seed the value_distribution and 
+        cluster_size_distribution generators.
+            
+    Returns
+    -------
+    model : CPTensor
+        Parameterized simulated data.
+    """
+    rns = check_random_state(random_state)
+    if densities is None:
+        densities = np.ones(rank)
+    if factor_rvs_list is None:
+        factor_rvs_list = [scipy.stats.uniform().rvs for i in range(rank)]
+    if weights is None:
+        weights = np.ones(rank)
+    factors = []
+    for i, dim in enumerate(shape):
+        factor = sparse.random(
+            dim,        
+            rank,       
+            density=densities[i],        
+            random_state=rns, 
+            data_rvs=factor_rvs_list[i]
+        )
+        factors.append(factor.A)
+    return CPTensor((weights, factors))
 
 # ##########
 # # Function to generate original Block Model

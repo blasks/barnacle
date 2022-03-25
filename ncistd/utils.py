@@ -80,6 +80,87 @@ def visualize_3d_tensor(tensor,
     return fig
 
 ##########
+# Function to plot heatmap of factors
+##########
+def plot_factors_heatmap(factors, 
+                         ratios=False, 
+                         reference_factors=None, 
+                         figsize=None, 
+                         heatmap_kwargs=None):
+    """Plot a heatmap visualization of cp_tensor factors
+    
+    Parameters
+    ----------
+    factors : list of numpy.ndarray
+        The factors to be plotted
+    ratios : {bool, list of ints},
+        True = heights of plots are proportional to dimensions of factors
+        False = heights of plots are identical
+        list of ints = manual assignment of height ratios
+    reference_factors : list of numpy.ndarray, optional
+        A second set of baseline factors to be plotted. Sizes and shapes are 
+        assumed to be the same as in `factors`. If not None, `reference_factors`
+        will be plotted in the first column, and `factors` in the second.
+    figsize : 2-tuple, optional
+        Size of the figure
+    heatmap_kwargs : dict, optional
+        Keword arguments to be passed to each heatmap in the figure
+            
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Matplotlib figure object
+    ax : matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axes object
+    """
+    columns = 1 + (reference_factors is not None)
+    rows = len(factors)
+    if figsize is None:
+        figsize = (5 * columns, 5 * rows)
+    if type(ratios) is list:
+        assert len(ratios) == rows
+    elif ratios:
+        ratios = [factor.shape[0] for factor in factors]
+        ratios = [r / min(ratios) for r in ratios]
+    else:
+        ratios = np.ones(rows)
+    if heatmap_kwargs is None:
+        heatmap_kwargs = {}
+    fig, ax = plt.subplots(
+        rows, 
+        columns, 
+        figsize=figsize, 
+        gridspec_kw={'height_ratios': ratios}
+    )
+    for i in range(rows):
+        # plot reference
+        if not i:
+            cbar = True
+        else:
+            cbar = False
+        if reference_factors is not None:
+            sns.heatmap(
+                reference_factors[i], 
+                mask=(reference_factors[i]==0), 
+                **heatmap_params, 
+                ax=ax[i][0]
+            )
+            sns.heatmap(
+                factors[i], 
+                mask=(factors[i]==0), 
+                **heatmap_kwargs, 
+                ax=ax[i][1]
+            )
+        else:
+            sns.heatmap(
+                factors[i], 
+                mask=(factors[i]==0), 
+                **heatmap_kwargs, 
+                ax=ax[i]
+            )
+    return fig, ax
+
+##########
 # function to generate tensorly CPTensor of all zeros
 ##########
 def zeros_cp(shape, rank):
