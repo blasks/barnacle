@@ -1,7 +1,9 @@
 """The utils module contains tools for visualizing and manipulating tensors"""
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import tensorly as tl
+from matplotlib import pyplot as plt
 from plotly.express import scatter_3d
 from sklearn.metrics import jaccard_score
 from tensorly import check_random_state
@@ -84,6 +86,7 @@ def visualize_3d_tensor(tensor,
 ##########
 def plot_factors_heatmap(factors, 
                          ratios=False, 
+                         mask_thold=None, 
                          reference_factors=None, 
                          figsize=None, 
                          heatmap_kwargs=None):
@@ -97,6 +100,10 @@ def plot_factors_heatmap(factors,
         True = heights of plots are proportional to dimensions of factors
         False = heights of plots are identical
         list of ints = manual assignment of height ratios
+    mask_thold : tuple of floats
+        Interval (inclusive) between which all values will be masked out of heatmaps. 
+        Example: 
+            (0, 0) = only values that are exactly zero will be masked.
     reference_factors : list of numpy.ndarray, optional
         A second set of baseline factors to be plotted. Sizes and shapes are 
         assumed to be the same as in `factors`. If not None, `reference_factors`
@@ -133,28 +140,36 @@ def plot_factors_heatmap(factors,
         gridspec_kw={'height_ratios': ratios}
     )
     for i in range(rows):
-        # plot reference
-        if not i:
-            cbar = True
+        # get factor mask
+        if mask_thold is not None:
+            fact_mask = np.logical_and((factors[i] >= mask_thold[0]), 
+                                        (factors[i] <= mask_thold[1]))
         else:
-            cbar = False
+            fact_mask = None
+        # plot reference
         if reference_factors is not None:
+            # get reference mask
+            if mask_thold is not None:
+                ref_mask = np.logical_and((reference_factors[i] >= mask_thold[0]), 
+                                          (reference_factors[i] <= mask_thold[1]))
+            else:
+                ref_mask = None
             sns.heatmap(
                 reference_factors[i], 
-                mask=(reference_factors[i]==0), 
-                **heatmap_params, 
+                mask=ref_mask, 
+                **heatmap_kwargs, 
                 ax=ax[i][0]
             )
             sns.heatmap(
                 factors[i], 
-                mask=(factors[i]==0), 
+                mask=fact_mask, 
                 **heatmap_kwargs, 
                 ax=ax[i][1]
             )
         else:
             sns.heatmap(
                 factors[i], 
-                mask=(factors[i]==0), 
+                mask=fact_mask, 
                 **heatmap_kwargs, 
                 ax=ax[i]
             )

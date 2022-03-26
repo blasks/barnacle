@@ -2,6 +2,8 @@
 cluster data based on several different models"""
 import numpy as np
 import itertools
+import scipy.sparse as sparse
+import scipy.stats as stats
 from tensorly import check_random_state
 from tensorly.tenalg import outer
 from tensorly.cp_tensor import CPTensor
@@ -101,6 +103,7 @@ class SimulationTensor(CPTensor):
         
     def to_tensor(self, 
                   noise_level=0, 
+                  sparse_noise=False, 
                   noise_distribution=None, 
                   random_state=None):
         """Generate optionally noisey data tensor from factorized CP tensor.
@@ -109,6 +112,9 @@ class SimulationTensor(CPTensor):
         ----------
         noise_level : float, optional
             Scale factor for the noise tensor, relative to the l2 norms.
+        sparse_noise : bool
+            If True, will set all positions in the noise matrix that correspond
+            to sparse positions in the signal matrix to zero. Default is False.
         noise_distribution : scipy.stats.rv_continuous, optional
             Parameterized continuous distribution to generate the noise tensor.
             This parameter cannot be None if noise_level > 0.
@@ -124,16 +130,15 @@ class SimulationTensor(CPTensor):
         data = super().to_tensor()
         if noise_level == 0:
             return data
-        elif noise_distribution is None:
-            raise ValueError('For noise_level > 0, you must pass a ' 
-                             'parameterized scipy.stats.rv_continuous '
-                             'distribution from which the noise tensor '
-                             'will be drawn.')
         else:
+            if noise_distribution is None:
+                noise_distribution = stats.norm()
             # initialize random generator
             rns = check_random_state(random_state)
             # add noise to data tensor
             noise = noise_distribution.rvs(size=self.shape, random_state=rns)
+            if sparse_noise:
+                noise = noise * (data != 0)
             noise /= np.linalg.norm(noise)
             noise *= noise_level * self.norm()
             data += noise
@@ -296,7 +301,7 @@ def simulated_sparse_tensor(shape,
             data_rvs=factor_rvs_list[i]
         )
         factors.append(factor.A)
-    return CPTensor((weights, factors))
+    return SimulationTensor((weights, factors))
 
 # ##########
 # # Function to generate original Block Model
