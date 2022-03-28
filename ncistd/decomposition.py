@@ -116,7 +116,8 @@ def als_lasso(tensor,
               mask=None,   
               n_iter_max=100, 
               init='random', 
-              normalize_factors='l2', 
+              normalization=None, 
+              normalize_modes=None, 
               tolerance=1e-6, 
               iter_thold=1, 
               random_state=None, 
@@ -151,11 +152,15 @@ def als_lasso(tensor,
         Type of factor matrix initialization.
         If a CPTensor is passed, this is directly used for initalization.
         See `initialize_factors`.
-    normalize_factors : {'l2', 'max', None}
+    normalization : {'l2', 'max', None}
         Method by which factors will be normalized, with normalization values
-        being stored in `weights`. If `normalize_factors`=None, no normalization
+        being stored in `weights`. If `normalization`=None, no normalization
         will be computed and `weights` will be returned as a vector of ones.
-        Default is `normalize_factors`='l2'. 
+        Default is `normalization`=None. 
+    normalize_modes : [int]
+        If `normalization` is not set to None, this is the modes on which normalization
+        will be carried out.
+        Default is `normalize_modes`=None. 
     tolerance : float, optional
         (Default: 1e-6) Convergence tolerance. The
         algorithm is considered to have found the global minimum when the
@@ -186,7 +191,7 @@ def als_lasso(tensor,
     -------
     CPTensor : (weight, factors)
         * weights : 1D array of shape (rank, )
-          * all ones if normalize_factors is False (default)
+          * all ones if `normalization` is None (default)
           * weights of the (normalized) factors otherwise
         * factors : List of factors of the CP decomposition element `i` is of shape ``(tensor.shape[i], rank)``
         * sparse_component : nD array of shape tensor.shape. Returns only if `sparsity` is not None.
@@ -214,6 +219,11 @@ def als_lasso(tensor,
         
     # initialize list to store reconstruction errors
     rec_errors = []
+    
+    # initialize normalization list
+    if normalize_modes is None:
+        normalize_modes = list()
+        normalization = None
 
     # initialize factors and weights
     ##########
@@ -221,7 +231,7 @@ def als_lasso(tensor,
     ##########
     weights, factors = initialize_cp(tensor, rank, init=init, 
                                      random_state=random_state, 
-                                     normalize_factors=normalize_factors)
+                                     normalize_factors=normalization)
     
     # initialize convergence threshold count
     conv_count = 0
@@ -260,22 +270,23 @@ def als_lasso(tensor,
             factor_update = factor_update.toarray().T
             
             # normalize new factor
-            if normalize_factors == 'l2' or (iteration == 0 and normalize_factors == 'max'):
-                scales = tl.norm(factor_update, 2, axis=0)
-                # replace zeros with ones
-                weights = tl.where(scales==0, 
-                                   tl.ones(tl.shape(scales), 
-                                           **tl.context(factor_update)), 
-                                   scales)
-                factor_update = factor_update / tl.reshape(weights, (1, -1))
-            elif normalize_factors == 'max':
-                weights = np.max(factor_update, 0)
-                weights = np.max([weights, np.ones_like(weights)], 0)
-                factor_update = factor_update / tl.reshape(weights, (1, -1))
-            elif normalize_factors is None:
-                pass
-            else:
-                raise ValueError('Invalid option passed to `normalize_factors`')
+            if mode in normalize_modes:
+                if normalization == 'l2' or (iteration == 0 and normalization == 'max'):
+                    scales = tl.norm(factor_update, 2, axis=0)
+                    # replace zeros with ones
+                    weights = tl.where(scales==0, 
+                                       tl.ones(tl.shape(scales), 
+                                               **tl.context(factor_update)), 
+                                       scales)
+                    factor_update = factor_update / tl.reshape(weights, (1, -1))
+                elif normalization == 'max':
+                    weights = np.max(factor_update, 0)
+                    weights = np.max([weights, np.ones_like(weights)], 0)
+                    factor_update = factor_update / tl.reshape(weights, (1, -1))
+                elif normalization is None:
+                    pass
+                else:
+                    raise ValueError('Invalid option passed to `normalization`')
             
             # update factor
             factors[mode] = factor_update
@@ -320,4 +331,3 @@ def als_lasso(tensor,
         return cp_tensor, rec_errors
     else:
         return cp_tensor
-
