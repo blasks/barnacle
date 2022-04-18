@@ -251,7 +251,7 @@ def overlapping_block_model(shape,
 def simulated_sparse_tensor(shape, 
                             rank, 
                             densities=None, 
-                            factor_rvs_list=None,  
+                            factor_dist_list=None,  
                             weights=None, 
                             random_state=None):
     """Generates simulated data in the form of a sparse cp_tensor
@@ -266,13 +266,12 @@ def simulated_sparse_tensor(shape,
         The proportion of elements that are non-zero in the factor matrices. 
         Must be the same length as the `shape` parameter.
         If not set, the densities are set to 1 for fully dense factor matrices.
-    factor_rvs_list : list of callables, optional
+    factor_dist_list : list of scipy.stats._distn_infrastructure.rv_frozen, optional
         Distributions from which the factor matrices will be drawn. Must be the
-        same length as the `shape` parameter and must accept
-        an integer argument specifying the number of random values to be drawn, 
-        and a `random_state` argument specifying state.
+        same length as the `shape` parameter and must have a .rvs() method 
+        for drawing random values, and a `random_state` attribute specifying state.
         Example:
-            scipy.stats.uniform().rvs
+            scipy.stats.uniform()
     weights : list of floats, optional
         Weights to assign to each factor. If not set, then defaults to ones.
     random_state : {None, int, np.random.RandomState}
@@ -287,18 +286,20 @@ def simulated_sparse_tensor(shape,
     rns = check_random_state(random_state)
     if densities is None:
         densities = np.ones(rank)
-    if factor_rvs_list is None:
-        factor_rvs_list = [scipy.stats.uniform().rvs for i in range(rank)]
+    if factor_dist_list is None:
+        factor_dist_list = [scipy.stats.uniform() for i in range(rank)]
     if weights is None:
         weights = np.ones(rank)
     factors = []
     for i, dim in enumerate(shape):
+        dist = factor_dist_list[i]
+        dist.random_state = rns
         factor = sparse.random(
             dim,        
             rank,       
             density=densities[i],        
             random_state=rns, 
-            data_rvs=factor_rvs_list[i]
+            data_rvs=dist.rvs
         )
         factors.append(factor.A)
     return SimulationTensor((weights, factors))
