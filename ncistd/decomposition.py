@@ -138,7 +138,7 @@ def als_lasso(tensor,
         Number of components.
     lambdas : [float]
         Vector of length tensor.ndim in which lambda[i] is the l1 sparsity 
-        parameter for factor[i].
+        coefficient for factor[i].
     nonneg_modes : [int]
         List of modes to force to be non-negative. Default is None.
     mask : numpy.ndarray, optional
@@ -176,9 +176,11 @@ def als_lasso(tensor,
         Level of verbosity
     return_errors : bool, optional
         Activate return of iteration errors
-    cvg_criterion : {'rec_error'}, optional
-        Stopping criterion for ALS, works if `tol` is not None. 
-        'rec_error' : `|previous rec_error - current rec_error| < tol`
+    cvg_criterion : {'rec_error', 'ssl'}, optional
+        Stopping criterion for ALS. When  `tol` is not None, it is set to 
+        `|previous rec_error - current rec_error| < tol`. 
+        'rec_error': `tl.norm(mask * (tensor - reconstruction), 2) / masked_norm`
+        'ssl' : `tl.norm(mask * (tensor - reconstruction), 2) ** 2 + penalties`
         If a mask is passed, error measurement is calculated only on unmasked
         values.
     als_si : bool
@@ -278,15 +280,20 @@ def als_lasso(tensor,
                                        tl.ones(tl.shape(scales), 
                                                **tl.context(factor_update)), 
                                        scales)
-                    factor_update = factor_update / tl.reshape(weights, (1, -1))
+                elif normalization == 'l1':
+                    scales = tl.norm(factor_update, 1, axis=0)
+                    weights = tl.where(scales==0, 
+                                       tl.ones(tl.shape(scales), 
+                                               **tl.context(factor_update)), 
+                                       scales)
                 elif normalization == 'max':
                     weights = np.max(factor_update, 0)
                     weights = np.max([weights, np.ones_like(weights)], 0)
-                    factor_update = factor_update / tl.reshape(weights, (1, -1))
                 elif normalization is None:
                     pass
                 else:
                     raise ValueError('Invalid option passed to `normalization`')
+                factor_update = factor_update / tl.reshape(weights, (1, -1))
             
             # update factor
             factors[mode] = factor_update
@@ -297,19 +304,27 @@ def als_lasso(tensor,
         if als_si:
             tensor = tensor * mask + reconstruction * (1 - mask)
         # compute reconstruction error if needed
-        if cvg_criterion == 'rec_error' or return_errors:
+        if cvg_criterion == 'rec_error':
             # compute normalized reconstruction error
             rec_error = tl.norm(mask * (tensor - reconstruction), 2) / masked_norm
             rec_errors.append(rec_error)
             if verbose > 0:
                 print('reconstruction error: {}'.format(rec_errors[-1]), flush=True)
+        elif cvg_criterion == 'ssl':
+            # compute sum of squares, including sparsity penalty
+            factor_l1_norms = np.array([tl.norm(f, 1) for f in factors])
+            penalties = tl.dot(lambdas, factor_l1_norms)
+            rec_error = tl.norm(mask * (tensor - reconstruction), 2) ** 2 + penalties
+            rec_errors.append(rec_error)
+            if verbose > 0:
+                print('reconstruction error: {}'.format(rec_errors[-1]), flush=True)
+        else:
+            raise ValueError('Invalid convergence criterion: {}'.format(cvg_criterion))
         
         # check convergence
         if tolerance != 0 and iteration != 0:
-            if cvg_criterion == 'rec_error':
-                fit_change = abs(rec_errors[-2] - rec_errors[-1])
-            else:
-                raise ValueError('Invalid convergence criterion: {}'.format(cvg_criterion))
+            # calculate fit change
+            fit_change = abs(rec_errors[-2] - rec_errors[-1])
             # compare fit change to tolerance
             if fit_change < tolerance:
                 # increment convergence count

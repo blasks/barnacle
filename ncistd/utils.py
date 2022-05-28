@@ -16,7 +16,12 @@ def visualize_3d_tensor(tensor,
                         midpoint=None, 
                         range_color=None, 
                         opacity=0.5, 
-                        aspectmode='data'):
+                        bg_color='#fff', 
+                        aspectmode='data',
+                        show_colorbar=True, 
+                        label_axes=True, 
+                        axes_names=None,
+                        figure_kwargs=None):
     """Plot an interactive visualization of a 3d tensor using plotly
     
         This method uses the plotly.express.scatter_3d() function to plot a 
@@ -36,12 +41,26 @@ def visualize_3d_tensor(tensor,
         Range of the color scale, formatted (low, high).
     opacity : float
         Opacity of the points on the plot, ranges from 0 to 1. Default is 0.5.
+    bg_color : str
+        Color of the plot background. Set to 'rgba(0,0,0,0)' for transparent 
+        background. Default is '#fff'.
     aspectmode : {'data', 'cube', 'auto'}
         Option passed to plotly to control the proportions of the axes:
             'data' : axes are in proportion to the data ranges
             'cube' : axes are drawn as a cube, regardless of data ranges
             'auto' : 'data' if no axis is > 4x any other axis, otherwise 'cube'
         Default is 'data'.
+    label_axes : bool
+        Plot axes label names and scales. Defalut is True.
+    show_colorbar : bool
+        Plot legend. Defalut is True
+    axes_names : list, optional 
+        Names of axes. Length must equal the number of modes in the tensor.
+        When set to None, default names in the form of 'axisX' are used.
+        Default is None.
+    figure_kwargs : dict, optional
+        Keyword arguments to be passed to the plotly.express.scatter_3d() 
+        function. Default is None.
             
     Returns
     -------
@@ -50,12 +69,21 @@ def visualize_3d_tensor(tensor,
         including show() and save().
     """
     data = dict()
-    axis_columns = []
+    n_modes = len(tensor.shape)
+    if axes_names is not None:
+        if len(axes_names) != n_modes:
+            raise AssertionError(('Length of `axes_names` does not match modes in tensor'))
+        axis_columns = axes_names
+    else:
+        axis_columns = []
     for i, v in enumerate(np.indices(tensor.shape)):
-        axis = 'axis{}'.format(i)
-        axis_columns.append(axis)
+        if axes_names is None:
+            axis = 'axis{}'.format(i)
+            axis_columns.append(axis)
+        else:
+            axis = axis_columns[i]
         data.update({axis: v.flatten()})
-    data.update({'expression': tensor.flatten()})
+    data.update({'abundance': tensor.flatten()})
     data.update({'abs_exp': np.abs(tensor.flatten())})
     # make dataframe
     df = pd.DataFrame(data)
@@ -67,18 +95,55 @@ def visualize_3d_tensor(tensor,
             # add in the max index for each dimension
             mask = np.any([mask, df[col].eq(df[col].max())], axis=0)
         df = df[mask]
+    # make keyword arguments
+    kwargs = dict(
+        x=axis_columns[0], 
+        y=axis_columns[1], 
+        z=axis_columns[2], 
+        color='abundance', 
+        size='abs_exp', 
+        opacity=opacity, 
+        color_continuous_scale='RdBu_r', 
+        color_continuous_midpoint=midpoint, 
+        range_color=range_color
+    )
+    # update with figure_kwargs
+    if figure_kwargs is not None:  
+        for k, v in figure_kwargs.items():
+            kwargs[k] = v
     # make the figure 
-    fig = scatter_3d(df, x='axis0', y='axis1', z='axis2', color='expression', 
-                     size='abs_exp', opacity=opacity, 
-                     color_continuous_scale='RdBu_r', 
-                     color_continuous_midpoint=midpoint, 
-                     range_color=range_color)
-    fig.update_layout(scene=dict(xaxis=dict(showbackground=False), 
-                                 yaxis=dict(showbackground=False), 
-                                 zaxis=dict(showbackground=False), 
-                                 aspectmode=aspectmode), 
-                      width=700)
-    fig.update_traces(marker=dict(line=dict(color=None, width=0)))
+    fig = scatter_3d(df, **kwargs)
+    fig.update_layout(
+        scene=dict(
+            xaxis=dict(
+                showbackground=False, 
+                visible=label_axes
+            ), 
+            yaxis=dict(
+                showbackground=False, 
+                visible=label_axes
+            ), 
+            zaxis=dict(
+                showbackground=False, 
+                visible=label_axes
+            ), 
+            aspectmode=aspectmode
+        ), 
+        width=700, 
+        paper_bgcolor=bg_color,
+        plot_bgcolor=bg_color
+    )
+    fig.update_coloraxes(
+        showscale=show_colorbar
+    )
+    fig.update_traces(
+        marker=dict(
+            line=dict(
+                color=None, 
+                width=0
+            )
+        )
+    )
     return fig
 
 ##########
@@ -111,7 +176,7 @@ def plot_factors_heatmap(factors,
     figsize : 2-tuple, optional
         Size of the figure
     heatmap_kwargs : dict, optional
-        Keword arguments to be passed to each heatmap in the figure
+        Keyword arguments to be passed to each heatmap in the figure
             
     Returns
     -------
