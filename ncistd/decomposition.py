@@ -108,6 +108,8 @@ class SparseCP(DecompositionMixin):
     def __repr__(self):
         return '{} decomposition with max rank {}'.format(self.__class__.__name__, self.max_rank)
     
+    
+# working to speed and optimize this function
 
 def als_lasso(tensor, 
               rank, 
