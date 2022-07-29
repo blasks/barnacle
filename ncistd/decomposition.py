@@ -12,6 +12,11 @@ from tensorly.tenalg import khatri_rao
 # function to generate tensorly CPTensor of all zeros
 # NOTE: Figure out how to import this from utils later
 ##########
+
+def test_func():
+    return "This was a test. You passed."
+
+
 def zeros_cp(shape, rank):
     """Return tensorly.CPTensor of all zeros of the specified
     size and rank.
