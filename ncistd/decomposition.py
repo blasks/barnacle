@@ -2,7 +2,7 @@ import numpy as np
 from spams import lasso, lassoMask
 import tensorly as tl 
 from tensorly import unfold, check_random_state
-from tensorly.cp_tensor import CPTensor, cp_to_tensor
+from tensorly.cp_tensor import CPTensor, cp_to_tensor, unfolding_dot_khatri_rao
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from tensorly.tenalg import khatri_rao
@@ -193,12 +193,17 @@ def als_lasso(tensor,
     errors : list
         A list of reconstruction errors at each iteration of the algorithms.
     """
+    # calculate values that are reused
+    n_modes = tl.ndim(tensor)
+    
     # get mask ready
     if mask is None:
         mask = np.ones_like(tensor, dtype=bool)
+        mttkrp_optimization = True
     else:
         # make sure mask is boolean type
         mask = np.array(mask, dtype=bool)
+        mttkrp_optimization = False
         
     # calculate masked norm for error calculations
     masked_norm = tl.norm(mask * tensor, 2)
@@ -234,23 +239,44 @@ def als_lasso(tensor,
             print('Starting iteration {}'.format(iteration + 1), flush=True)
             
         # loop through modes
-        for mode in range(tl.ndim(tensor)):
+        for mode in range(n_modes):
             if verbose > 1:
-                print('Mode {} of {}'.format(mode, tl.ndim(tensor)), flush=True)
+                print('Mode {} of {}'.format(mode, n_modes), flush=True)
             
-            # take the khatri_rao product of all factors except factors[mode]
-            kr_product = khatri_rao(factors, None, skip_matrix=mode)
-            # unfold data tensor and mask along mode
+            # unfold data tensor along mode
             X_unfolded = unfold(tensor, mode)
-    
-            # unfold the mask as well
-            mask_unfolded = unfold(mask, mode)
-            # generate new factor with masked lasso decomposition
-            factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
-                                    D=np.asfortranarray(kr_product),  
-                                    B=np.asfortranarray(mask_unfolded.T), 
-                                    lambda1=lambdas[mode], 
-                                    pos=nonneg[mode])
+                
+            # in the absence of a mask, use the mttkrp optimization
+            if mttkrp_optimization:
+                # DtD contains kr_product.T @ kr_product
+                DtD = np.ones((rank, rank))
+                for krp_mode in range(n_modes):
+                    if krp_mode == mode:
+                        continue
+                    DtD *= np.matmul(factors[krp_mode].T, factors[krp_mode])
+                    
+                # DtX contains kr_product.T @ X_unfolded
+                DtX = unfolding_dot_khatri_rao(tensor, (None, factors), mode)
+                
+                # generate new factor with lasso decomposition
+                factor_update = lasso(X=np.asfortranarray(X_unfolded.T), 
+                                      Q=np.asfortranarray(DtD), 
+                                      q=np.asfortranarray(DtX.T), 
+                                      lambda1=lambdas[mode], 
+                                      pos=nonneg[mode])
+                
+            # perform standard l1-penalized als if there are masked values
+            else:
+                # unfold the mask as well
+                mask_unfolded = unfold(mask, mode)
+                # take the khatri_rao product of all factors except factors[mode]
+                kr_product = khatri_rao(factors, None, skip_matrix=mode)
+                # generate new factor with masked lasso decomposition
+                factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
+                                        D=np.asfortranarray(kr_product),  
+                                        B=np.asfortranarray(mask_unfolded.T), 
+                                        lambda1=lambdas[mode], 
+                                        pos=nonneg[mode])
             
             # convert factor back to numpy array and transpose
             factor_update = factor_update.toarray().T
@@ -284,9 +310,7 @@ def als_lasso(tensor,
         
         # build reconstruction from CP decomposition
         reconstruction = cp_to_tensor((weights, factors))
-        # update completed tensor with most recent imputations for als-si
-        if als_si:
-            tensor = tensor * mask + reconstruction * (1 - mask)
+        
         # compute reconstruction error if needed
         if cvg_criterion == 'rec_error':
             # compute normalized reconstruction error
