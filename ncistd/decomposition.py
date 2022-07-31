@@ -8,14 +8,6 @@ from tensorly.decomposition._cp import initialize_cp
 from tensorly.tenalg import khatri_rao
 # from .utils import zeros_cp
 
-##########
-# function to generate tensorly CPTensor of all zeros
-# NOTE: Figure out how to import this from utils later
-##########
-
-def test_func():
-    return "This was a test. You passed."
-
 
 def zeros_cp(shape, rank):
     """Return tensorly.CPTensor of all zeros of the specified
@@ -26,6 +18,7 @@ def zeros_cp(shape, rank):
     for dim in shape:
         factors.append(tl.zeros([dim, rank]))
     return(CPTensor((weights, factors)))
+
 
 class SparseCP(DecompositionMixin):
     """Sparse Candecomp-Parafac decomposition 
@@ -113,8 +106,6 @@ class SparseCP(DecompositionMixin):
     def __repr__(self):
         return '{} decomposition with max rank {}'.format(self.__class__.__name__, self.max_rank)
     
-    
-# working to speed and optimize this function
 
 def als_lasso(tensor, 
               rank, 
@@ -130,8 +121,8 @@ def als_lasso(tensor,
               random_state=None, 
               verbose=0, 
               return_errors=False, 
-              cvg_criterion='rec_error', 
-              als_si=False):
+              cvg_criterion='rec_error'
+              ):
     """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
     Computes a rank-`rank` decomposition of `tensor` such that::
@@ -155,7 +146,7 @@ def als_lasso(tensor,
         True). Allows for missing values.
     n_iter_max : int
         Maximum number of iteration
-    init : {'svd', 'random', CPTensor}, optional
+    init : {'random', CPTensor}, optional
         Type of factor matrix initialization.
         If a CPTensor is passed, this is directly used for initalization.
         See `initialize_factors`.
@@ -190,11 +181,6 @@ def als_lasso(tensor,
         'ssl' : `tl.norm(mask * (tensor - reconstruction), 2) ** 2 + penalties`
         If a mask is passed, error measurement is calculated only on unmasked
         values.
-    als_si : bool
-        (Default: False) If True, then uses the ALS-SI algorithm detailed in
-        Tomasi & Bro 2005, where the interim imputation is used in place of 
-        missing values in all but the first iteration. If False, the mask is
-        passed to the inner loop least squares problem every iteration.
 
     Returns
     -------
@@ -235,9 +221,6 @@ def als_lasso(tensor,
         normalization = None
 
     # initialize factors and weights
-    ##########
-    # WARNING: There is no mask function in the case the `svd` option is used
-    ##########
     weights, factors = initialize_cp(tensor, rank, init=init, 
                                      random_state=random_state, 
                                      normalize_factors=normalization)
@@ -259,21 +242,15 @@ def als_lasso(tensor,
             kr_product = khatri_rao(factors, None, skip_matrix=mode)
             # unfold data tensor and mask along mode
             X_unfolded = unfold(tensor, mode)
-            if als_si and iteration > 0:
-                # generate new factor with lasso decomposition (no mask)
-                factor_update = lasso(X=np.asfortranarray(X_unfolded.T), 
-                                      D=np.asfortranarray(kr_product), 
-                                      lambda1=lambdas[mode], 
-                                      pos=nonneg[mode])
-            else: 
-                # unfold the mask as well
-                mask_unfolded = unfold(mask, mode)
-                # generate new factor with masked lasso decomposition
-                factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
-                                        D=np.asfortranarray(kr_product),  
-                                        B=np.asfortranarray(mask_unfolded.T), 
-                                        lambda1=lambdas[mode], 
-                                        pos=nonneg[mode])
+    
+            # unfold the mask as well
+            mask_unfolded = unfold(mask, mode)
+            # generate new factor with masked lasso decomposition
+            factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
+                                    D=np.asfortranarray(kr_product),  
+                                    B=np.asfortranarray(mask_unfolded.T), 
+                                    lambda1=lambdas[mode], 
+                                    pos=nonneg[mode])
             
             # convert factor back to numpy array and transpose
             factor_update = factor_update.toarray().T
