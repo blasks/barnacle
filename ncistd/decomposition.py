@@ -193,6 +193,8 @@ def als_lasso(tensor,
     errors : list
         A list of reconstruction errors at each iteration of the algorithms.
     """
+    print(random_state, flush=True)
+    
     # calculate values that are reused
     n_modes = tl.ndim(tensor)
     
@@ -348,9 +350,12 @@ def als_lasso(tensor,
             if verbose > 0:
                 print('Algorithm failed to converge after {} iterations'.format(iteration+1), flush=True)
             
+    print('{} done -- {}'.format(random_state, time.ctime()))
+    
     # return result
     cp_tensor = CPTensor((weights, factors))
     if return_errors:
         return cp_tensor, rec_errors
     else:
         return cp_tensor
+    
