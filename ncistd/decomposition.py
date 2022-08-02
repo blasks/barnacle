@@ -192,9 +192,7 @@ def als_lasso(tensor,
         * sparse_component : nD array of shape tensor.shape. Returns only if `sparsity` is not None.
     errors : list
         A list of reconstruction errors at each iteration of the algorithms.
-    """
-    print(random_state, flush=True)
-    
+    """    
     # calculate values that are reused
     n_modes = tl.ndim(tensor)
     
