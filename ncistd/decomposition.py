@@ -347,9 +347,7 @@ def als_lasso(tensor,
         elif iteration == n_iter_max - 1:
             if verbose > 0:
                 print('Algorithm failed to converge after {} iterations'.format(iteration+1), flush=True)
-            
-    print('{} done -- {}'.format(random_state, time.ctime()))
-    
+                
     # return result
     cp_tensor = CPTensor((weights, factors))
     if return_errors:
