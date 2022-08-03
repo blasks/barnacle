@@ -131,3 +131,6 @@ dmypy.json
 # vscode stuff
 .vscode
 .DS_Store
+
+# tarballs
+*.tar.gz
