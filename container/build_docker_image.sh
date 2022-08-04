@@ -5,4 +5,4 @@
 
 # make and save docker image
 docker image build --tag ncistd .
-docker save fastq-preprocess | gzip > ncistd.tar.gz
+docker save ncistd | gzip > ncistd.tar.gz
