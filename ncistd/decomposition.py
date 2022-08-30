@@ -193,6 +193,9 @@ def als_lasso(tensor,
     errors : list
         A list of reconstruction errors at each iteration of the algorithms.
     """
+    # calculate number of modes in tensor
+    n_modes = tl.ndim(tensor)
+    
     # get mask ready
     if mask is None:
         mask = np.ones_like(tensor, dtype=bool)
@@ -234,9 +237,9 @@ def als_lasso(tensor,
             print('Starting iteration {}'.format(iteration + 1), flush=True)
             
         # loop through modes
-        for mode in range(tl.ndim(tensor)):
+        for mode in range(n_modes):
             if verbose > 1:
-                print('Mode {} of {}'.format(mode, tl.ndim(tensor)), flush=True)
+                print('Mode {} of {}'.format(mode, n_modes), flush=True)
             
             # take the khatri_rao product of all factors except factors[mode]
             kr_product = khatri_rao(factors, None, skip_matrix=mode)
@@ -284,9 +287,7 @@ def als_lasso(tensor,
         
         # build reconstruction from CP decomposition
         reconstruction = cp_to_tensor((weights, factors))
-        # update completed tensor with most recent imputations for als-si
-        if als_si:
-            tensor = tensor * mask + reconstruction * (1 - mask)
+        
         # compute reconstruction error if needed
         if cvg_criterion == 'rec_error':
             # compute normalized reconstruction error
