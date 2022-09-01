@@ -1,5 +1,5 @@
 import numpy as np
-from spams import lasso, lassoMask
+from spams import lasso
 import tensorly as tl 
 from tensorly import unfold, check_random_state
 from tensorly.cp_tensor import CPTensor, cp_to_tensor, unfolding_dot_khatri_rao
