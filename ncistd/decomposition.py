@@ -1,334 +1,260 @@
 import numpy as np
+import opt_einsum as oe
 from spams import lasso
 import tensorly as tl 
-from tensorly import unfold, check_random_state
-from tensorly.cp_tensor import CPTensor, cp_to_tensor, unfolding_dot_khatri_rao
+from tensorly import unfold, check_random_state, cp_normalize
+from tensorly.cp_tensor import cp_to_tensor, unfolding_dot_khatri_rao
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from tensorly.tenalg import khatri_rao
-# from .utils import zeros_cp
+import warnings
 
 
-def zeros_cp(shape, rank):
-    """Return tensorly.CPTensor of all zeros of the specified
-    size and rank.
+def _create_mttkrp_function(shape, rank):
+    """Helper function to generate the mttkrp computation function to be 
+    used with the `mttkrp_optimization='opt_einsum'` option in `als_lasso`. 
     """
-    weights = tl.zeros(rank)
-    factors = []
-    for dim in shape:
-        factors.append(tl.zeros([dim, rank]))
-    return(CPTensor((weights, factors)))
+    # define einsum paths for each skip mode
+    mttkrp_paths = [
+        oe.contract_expression('jr,kr,ijk -> ir', (shape[1], rank), (shape[2], rank), shape),
+        oe.contract_expression('ir,kr,ijk -> jr', (shape[0], rank), (shape[2], rank), shape),
+        oe.contract_expression('ir,jr,ijk -> kr', (shape[0], rank), (shape[1], rank), shape)
+    ]
+    # define mttkrp function
+    def mttkrp(X, factors, mode):
+        mttkrp_path = mttkrp_paths[mode]
+        summed_factors = [fm for m, fm in enumerate(factors) if m != mode]
+        return mttkrp_path(*summed_factors, X)
+    # return the function
+    return mttkrp
 
-
-class SparseCP(DecompositionMixin):
-    """Sparse Candecomp-Parafac decomposition 
-    
-    """
-    def __init__(self, max_rank, lambdas, nonneg_modes=None, 
-                 n_iter_max=100, init='random', normalize_factors='l2', 
-                 tolerance=1e-6, iter_thold=1, verbose=0, 
-                 cvg_criterion='rec_error'):
-        self.max_rank = max_rank
-        self.lambdas = lambdas
-        self.nonneg_modes = nonneg_modes
-        self.n_iter_max = n_iter_max
-        self.init = init
-        self.normalize_factors = normalize_factors
-        self.tolerance = tolerance
-        self.iter_thold = iter_thold
-        self.verbose = verbose
-        self.cvg_criterion = cvg_criterion
-        
-    def fit_transform(self, X, mask=None, return_errors=True, random_state=None):
-        """Fit model to data using deflation algorithm with optional mask
-        Parameters
-        ----------
-        self : SparseCP
-            Initialized model
-        X : numpy.ndarray
-            Input data tensor to fit
-        mask : numpy.ndarray
-            Array of booleans with the same shape as X. Should be 0 where
-            the values are missing and 1 everywhere else. 
-            Allows for missing values.
-        return_errors : bool, optional
-            Activate return of iteration errors
-        random_state : {None, int, numpy.random.RandomState}
-            
-        Returns
-        -------
-        decomposition : tensorly.CPTensor
-            A CPTensor of the decomposition, where each factor is derived
-            from each successive deflation up to ``self.max_rank`` iterations.
-        errors : list
-            A list of reconstruction errors at each iteration of the algorithm.
-        """
-        rns = check_random_state(random_state)
-        if return_errors:
-            error_list = []
-        decomposition = zeros_cp(X.shape, self.max_rank)
-        residual_tensor = X.copy()
-        ndim = len(X.shape)
-        for r in range(self.max_rank):
-            if self.verbose > 0:
-                print('Fitting factor {}'.format(r), flush=True)
-            layer, errors = als_lasso(tensor=residual_tensor, 
-                                    rank=1, 
-                                    lambdas=self.lambdas, 
-                                    nonneg_modes=self.nonneg_modes, 
-                                    mask=mask, 
-                                    n_iter_max=self.n_iter_max, 
-                                    init=self.init, 
-                                    normalize_factors=self.normalize_factors, 
-                                    tolerance=self.tolerance, 
-                                    iter_thold=self.iter_thold, 
-                                    random_state=rns, 
-                                    verbose=max(0, self.verbose - 1), 
-                                    return_errors=True, 
-                                    cvg_criterion=self.cvg_criterion
-                                    )
-            # update weights with layer weight
-            decomposition.weights[r] = layer.weights[0]
-            # update factors with layer factors
-            for d in range(ndim):
-                decomposition.factors[d][:, r] = layer.factors[d][:, 0]
-            # record errors
-            if return_errors:
-                error_list.append(errors)
-            # deflate residual tensor
-            residual_tensor = residual_tensor - layer.to_tensor()
-        self.decomposition_ = decomposition
-        if return_errors:
-            return decomposition, error_list
-        else:
-            return decomposition
-    
-    def __repr__(self):
-        return '{} decomposition with max rank {}'.format(self.__class__.__name__, self.max_rank)
-    
 
 def als_lasso(tensor, 
               rank, 
               lambdas, 
               nonneg_modes=None, 
-              mask=None,   
-              n_iter_max=100, 
               init='random', 
-              normalization=None, 
-              normalize_modes=None, 
-              tolerance=1e-6, 
-              iter_thold=1, 
+              tol=1e-6, 
+              n_iter_max=1000, 
+              mttkrp_optimization='opt_einsum', 
               random_state=None, 
               verbose=0, 
-              return_errors=False, 
-              cvg_criterion='rec_error'
+              return_losses=False, 
               ):
     """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
     Computes a rank-`rank` decomposition of `tensor` such that::
-        tensor = [|weights; factors[0], ..., factors[-1] |].
+    
+        tensor = [|weights; factors[0], ..., factors[-1]|].
+        
+    The algorithm aims to minimize the loss as defined by::
+    
+        loss = `tl.norm(tensor - reconstruction, 2) ** 2 + penalties`
+            where `penalties` are calculated as the dot product of the `lambdas` 
+            sparsity coefficients and the L1 norms of the factor matrices.
+            
+    Furthermore, the factor matrices indicated in `nonneg_modes` are forced
+    to be non-negative, and the L2 norm of any factor matrices without an L1
+    sparsity penalty (lambda=0.0) is constrained to be unit length.
     
     Parameters
     ----------
     tensor : numpy.ndarray
         Input data tensor.
-    rank  : int
+    rank : int
         Number of components.
     lambdas : [float]
-        Vector of length tensor.ndim in which lambda[i] is the l1 sparsity 
-        coefficient for factor[i].
-    nonneg_modes : [int]
-        List of modes to force to be non-negative. Default is None.
-    mask : numpy.ndarray, optional
-        array of booleans with the same shape as ``tensor`` should be 0 where
-        the values are missing and 1 everywhere else. Note:  if tensor is
-        sparse, then mask should also be sparse with a fill value of 1 (or
-        True). Allows for missing values.
-    n_iter_max : int
-        Maximum number of iteration
-    init : {'random', CPTensor}, optional
-        Type of factor matrix initialization.
-        If a CPTensor is passed, this is directly used for initalization.
-        See `initialize_factors`.
-    normalization : {'l2', 'max', None}
-        Method by which factors will be normalized, with normalization values
-        being stored in `weights`. If `normalization`=None, no normalization
-        will be computed and `weights` will be returned as a vector of ones.
-        Default is `normalization`=None. 
-    normalize_modes : [int]
-        If `normalization` is not set to None, this is the modes on which normalization
-        will be carried out.
-        Default is `normalize_modes`=None. 
-    tolerance : float, optional
-        (Default: 1e-6) Convergence tolerance. The
-        algorithm is considered to have found the global minimum when the
-        convergence criterion is less than `tolerance` for at least 
-        `iter_thold` iterations in a row.
-    iter_thold : int
-        (Default: 1) Convergence threshold. The
-        algorithm is considered to have found the global minimum when the
-        convergence criterion is less than `tolerance` for at least 
-        `iter_thold` iterations in a row.
-    random_state : {None, int, numpy.random.RandomState}
-    verbose : int, optional
-        Level of verbosity
-    return_errors : bool, optional
-        Activate return of iteration errors
-    cvg_criterion : {'rec_error', 'ssl'}, optional
-        Stopping criterion for ALS. When  `tol` is not None, it is set to 
-        `|previous rec_error - current rec_error| < tol`. 
-        'rec_error': `tl.norm(mask * (tensor - reconstruction), 2) / masked_norm`
-        'ssl' : `tl.norm(mask * (tensor - reconstruction), 2) ** 2 + penalties`
-        If a mask is passed, error measurement is calculated only on unmasked
-        values.
+        Vector of length tensor.ndim in which lambdas[i] is the l1 sparsity 
+        coefficient for factor[i]. If `lambdas` is set to all zeros, this is
+        the equivalent of fitting a standard CP decomposition without any
+        sparsity constraints.
+    nonneg_modes : [int], default is None
+        List of modes forced to be non-negative.
+    init : {'random', CPTensor}, default is 'random'.
+        Values used to initialized the factor matrices. If `init == 'random'` 
+        then factor matrices are initialized with uniform distribution using 
+        `random_state`. If init is a previously initialized `cp tensor`, any 
+        weights are incorporated into the last factor, and then the initial 
+        weight values for the output decomposition are set to '1'.
+    tol : float, default is 1e-6
+        Convergence tolerance. The algorithm is considered to have found the 
+        global minimum when the change in loss from one iteration to the next 
+        falls below the `tol` threshold.
+    n_iter_max : int, default is 1000
+        Maximum number of iterations. If the algorithm fails to converge 
+        according to the `tol` threshold set, an error will be raised.
+    mttkrp_optimization : {'opt_einsum', 'tensorly', None}, default is 'opt_einsum'
+        Inner loop optimization using the Matricicized Tensor Times Khatri-Rao
+        Product (MTTKRP).
+            'opt_einsum' : The opt_einsum package is used to produce the MTTKRP 
+                (only works for mode-3 tensors).
+            'tensorly' : The tensorly.cp_tensor.unfolding_dot_khatri_rao 
+                function is used to produce the MTTKRP.
+            None : No MTTKRP optimization is used.
+    random_state : {None, int, numpy.random.RandomState}, default is None
+        Used to initialized factor matrices and weights.
+    verbose : int, default is 0
+        Level of verbosity.
+    return_losses : bool, default is False
+        Activate return of iteration loss values at each iteration.
         
     Returns
     -------
-    CPTensor : (weight, factors)
-        * weights : 1D array of shape (rank, )
-          * all ones if `normalization` is None (default)
-          * weights of the (normalized) factors otherwise
-        * factors : List of factors of the CP decomposition element `i` is of shape ``(tensor.shape[i], rank)``
-        * sparse_component : nD array of shape tensor.shape. Returns only if `sparsity` is not None.
-    errors : list
-        A list of reconstruction errors at each iteration of the algorithms.
+    cp_tensor : (weight, factors)
+        * weights : 1D array of shape (rank,) that contains the weights of the
+            factors, in which the L2 norm has been normalized to unit lenght.
+        * factors : List of factors of the CP decomposition where factor matrix 
+            `i` is of shape ``(tensor.shape[i], rank)``
+    losses : list
+        A list of loss values calculated at each iteration of the algorithm. 
+        Only returned when `return_losses` is set to True.
     """
     # calculate number of modes in tensor
     n_modes = tl.ndim(tensor)
-    
-    # get mask ready
-    if mask is None:
-        mask = np.ones_like(tensor, dtype=bool)
-    else:
-        # make sure mask is boolean type
-        mask = np.array(mask, dtype=bool)
-        
-    # calculate masked norm for error calculations
-    masked_norm = tl.norm(mask * tensor, 2)
         
     # set modes to be non-negative
     if nonneg_modes is None:
-        nonneg = [False for i in range(tensor.ndim)]
+        nonneg = [False for i in range(n_modes)]
     else:
-        nonneg = [True if i in nonneg_modes else False for i in range(tensor.ndim)]
+        nonneg = [True if i in nonneg_modes else False for i in range(n_modes)]
         
-    # double check lambdas are floats
+    # check lambdas
     lambdas = np.array(lambdas, dtype=float)
+    if len(lambdas) != n_modes:
+        raise ValueError(
+            'The number of sparsity coefficients in `lambdas`' +
+            'is not equal to the number of modes in `tensor`.'
+        )
         
-    # initialize list to store reconstruction errors
-    rec_errors = []
-    
-    # initialize normalization list
-    if normalize_modes is None:
-        normalize_modes = list()
-        normalization = None
+    # set modes without L2 sparsity penalization to be L2 normalized
+    normalize_modes = [i for i, l in enumerate(lambdas) if l == 0.0]
+        
+    # initialize list to store losses
+    losses = []
 
     # initialize factors and weights
-    weights, factors = initialize_cp(tensor, rank, init=init, 
-                                     random_state=random_state, 
-                                     normalize_factors=normalization)
+    weights, factors = initialize_cp(
+        tensor, 
+        rank, 
+        init=init, 
+        random_state=random_state
+    )
     
-    # initialize convergence threshold count
-    conv_count = 0
+    # build MTTKRP function if opt_einsum optimization has been selected
+    if mttkrp_optimization == 'opt_einsum':
+        compute_mttkrp = _create_mttkrp_function(tensor.shape, rank)
     
     # begin iterations
     for iteration in range(n_iter_max):
-        if verbose > 1:
-            print('Starting iteration {}'.format(iteration + 1), flush=True)
+        if verbose > 2:
+            print('\nStarting iteration {}'.format(iteration + 1), flush=True)
             
         # loop through modes
         for mode in range(n_modes):
-            if verbose > 1:
-                print('Mode {} of {}'.format(mode, n_modes), flush=True)
+            if verbose > 3:
+                print('\tMode {} of {}'.format(mode, n_modes), flush=True)
             
-            # take the khatri_rao product of all factors except factors[mode]
-            kr_product = khatri_rao(factors, None, skip_matrix=mode)
-            # unfold data tensor and mask along mode
+            # unfold data tensor along mode
             X_unfolded = unfold(tensor, mode)
-    
-            # unfold the mask as well
-            mask_unfolded = unfold(mask, mode)
-            # generate new factor with masked lasso decomposition
-            factor_update = lassoMask(X=np.asfortranarray(X_unfolded.T), 
-                                    D=np.asfortranarray(kr_product),  
-                                    B=np.asfortranarray(mask_unfolded.T), 
-                                    lambda1=lambdas[mode], 
-                                    pos=nonneg[mode])
             
+            # ALS lasso without MTTKRP optimization
+            if mttkrp_optimization is None:
+                # take the khatri_rao product of all factors except factors[mode]
+                kr_product = khatri_rao(factors, None, skip_matrix=mode)
+                # generate new factor by solving lasso problem
+                factor_update = lasso(
+                    X=np.asfortranarray(X_unfolded.T), 
+                    D=np.asfortranarray(kr_product), 
+                    lambda1=lambdas[mode], 
+                    pos=nonneg[mode]
+                )
+                
+            # ALS lasso with MTTKRP optimization
+            else:
+                # form DtD, containing kr_product.T @ kr_product
+                DtD = np.ones((rank, rank))
+                for krp_mode in range(n_modes):
+                    if krp_mode == mode:
+                        continue
+                    DtD *= np.matmul(factors[krp_mode].T, factors[krp_mode])
+                    
+                # form MTTKRP with opt_einsum optimization
+                if mttkrp_optimization == 'opt_einsum':
+                    # form DtX, containing kr_product.T @ X_unfolded
+                    DtX = compute_mttkrp(tensor, factors, mode)
+                    
+                # form MTTKRP with tensorly function
+                elif mttkrp_optimization == 'tensorly':
+                    # form DtX, containing kr_product.T @ X_unfolded
+                    DtX = unfolding_dot_khatri_rao(tensor, (None, factors), mode)
+                
+                # unrecognized optimization option 
+                else:
+                    raise ValueError('The argument passed to ' + 
+                                     '`mttkrp_optimization` is not reconized.')
+            
+                # generate new factor by solving lasso problem with MTTKRP
+                factor_update = lasso(
+                    X=np.asfortranarray(X_unfolded.T), 
+                    Q=np.asfortranarray(DtD), 
+                    q=np.asfortranarray(DtX.T), 
+                    lambda1=lambdas[mode], 
+                    pos=nonneg[mode]
+                )
+                
             # convert factor back to numpy array and transpose
             factor_update = factor_update.toarray().T
             
-            # normalize new factor
+            # normalize new factor if no L1 sparsity penalty was applied
             if mode in normalize_modes:
-                if normalization == 'l2' or (iteration == 0 and normalization == 'max'):
-                    scales = tl.norm(factor_update, 2, axis=0)
-                    # replace zeros with ones
-                    weights = tl.where(scales==0, 
-                                       tl.ones(tl.shape(scales), 
-                                               **tl.context(factor_update)), 
-                                       scales)
-                elif normalization == 'l1':
-                    scales = tl.norm(factor_update, 1, axis=0)
-                    weights = tl.where(scales==0, 
-                                       tl.ones(tl.shape(scales), 
-                                               **tl.context(factor_update)), 
-                                       scales)
-                elif normalization == 'max':
-                    weights = np.max(factor_update, 0)
-                    weights = np.max([weights, np.ones_like(weights)], 0)
-                elif normalization is None:
-                    pass
-                else:
-                    raise ValueError('Invalid option passed to `normalization`')
+                scales = tl.norm(factor_update, 2, axis=0)
+                # replace zeros with ones
+                weights = tl.where(
+                    scales==0, 
+                    tl.ones(tl.shape(scales), **tl.context(factor_update)), 
+                    scales
+                )
+                # normalize factor update
                 factor_update = factor_update / tl.reshape(weights, (1, -1))
             
             # update factor
             factors[mode] = factor_update
-        
-        # build reconstruction from CP decomposition
+                
+        # compute loss using tensor reconstructed from latest factor updates
         reconstruction = cp_to_tensor((weights, factors))
-        
-        # compute reconstruction error if needed
-        if cvg_criterion == 'rec_error':
-            # compute normalized reconstruction error
-            rec_error = tl.norm(mask * (tensor - reconstruction), 2) / masked_norm
-            rec_errors.append(rec_error)
-            if verbose > 0:
-                print('reconstruction error: {}'.format(rec_errors[-1]), flush=True)
-        elif cvg_criterion == 'ssl':
-            # compute sum of squares, including sparsity penalty
-            factor_l1_norms = np.array([tl.norm(f, 1) for f in factors])
-            penalties = tl.dot(lambdas, factor_l1_norms)
-            rec_error = tl.norm(mask * (tensor - reconstruction), 2) ** 2 + penalties
-            rec_errors.append(rec_error)
-            if verbose > 0:
-                print('reconstruction error: {}'.format(rec_errors[-1]), flush=True)
-        else:
-            raise ValueError('Invalid convergence criterion: {}'.format(cvg_criterion))
+        # calculate L1 sparsity penalties
+        factor_l1_norms = np.array([tl.norm(f, 1) for f in factors])
+        penalties = tl.dot(lambdas, factor_l1_norms)
+        # compute loss
+        loss = tl.norm(tensor - reconstruction, 2) ** 2 + penalties
+        # append loss to history
+        losses.append(loss)
+        if verbose > 1:
+            print('loss: {}'.format(losses[-1]), flush=True)
         
         # check convergence
-        if tolerance != 0 and iteration != 0:
-            # calculate fit change
-            fit_change = abs(rec_errors[-2] - rec_errors[-1])
-            # compare fit change to tolerance
-            if fit_change < tolerance:
-                # increment convergence count
-                conv_count += 1
-            else:
-                # reset convergence count to zero
-                conv_count = 0
-            if conv_count == iter_thold:
+        if tol != 0 and iteration != 0:
+            # calculate change in loss
+            loss_change = abs(losses[-2] - losses[-1])
+            # compare change in loss to tolerance
+            if loss_change < tol:
                 if verbose > 0:
-                    print('Algorithm converged after {} iterations'.format(iteration+1), flush=True)
+                    message = 'Algorithm converged after {} iterations'.format(iteration+1)
+                    print(message, flush=True)
                 break
+        # close out with warnings if the iteration maximum has been reached
         elif iteration == n_iter_max - 1:
+            message = 'Algorithm failed to converge after {} iterations'.format(iteration+1)
             if verbose > 0:
-                print('Algorithm failed to converge after {} iterations'.format(iteration+1), flush=True)
-            
+                print(message, flush=True)
+            warnings.warn(message)
+    
+    # normalize converged cp tensor
+    cp_tensor = cp_normalize((weights, factors))
+    
     # return result
-    cp_tensor = CPTensor((weights, factors))
-    if return_errors:
-        return cp_tensor, rec_errors
+    if return_losses:
+        return cp_tensor, losses
     else:
         return cp_tensor
 
