@@ -147,7 +147,7 @@ def als_lasso(tensor,
     # begin iterations
     for iteration in range(n_iter_max):
         if verbose > 2:
-            print('\nStarting iteration {}'.format(iteration + 1), flush=True)
+            print('\nStarting iteration {}'.format(iteration), flush=True)
             
         # loop through modes
         for mode in range(n_modes):
@@ -242,12 +242,12 @@ def als_lasso(tensor,
                     message = 'Algorithm converged after {} iterations'.format(iteration+1)
                     print(message, flush=True)
                 break
-        # close out with warnings if the iteration maximum has been reached
-        elif iteration == n_iter_max - 1:
-            message = 'Algorithm failed to converge after {} iterations'.format(iteration+1)
-            if verbose > 0:
-                print(message, flush=True)
-            warnings.warn(message)
+            # close out with warnings if the iteration maximum has been reached
+            elif iteration == n_iter_max - 1:
+                message = 'Algorithm failed to converge after {} iterations'.format(iteration+1)
+                if verbose > 0:
+                    print(message, flush=True)
+                warnings.warn(message)
     
     # normalize converged cp tensor
     cp_tensor = cp_normalize((weights, factors))
