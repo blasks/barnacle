@@ -30,19 +30,20 @@ def _create_mttkrp_function(shape, rank):
     return mttkrp
 
 
-def als_lasso(tensor, 
-              rank, 
-              lambdas, 
-              nonneg_modes=None, 
-              init='random', 
-              tol=1e-6, 
-              n_iter_max=1000, 
-              mttkrp_optimization='opt_einsum', 
-              random_state=None, 
-              threads=None, 
-              verbose=0, 
-              return_losses=False, 
-              ):
+def als_lasso(
+    tensor, 
+    rank, 
+    lambdas, 
+    nonneg_modes=None, 
+    init='random', 
+    tol=1e-6, 
+    n_iter_max=1000, 
+    mttkrp_optimization='opt_einsum', 
+    random_state=None, 
+    threads=None, 
+    verbose=0, 
+    return_losses=False
+):
     """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
     Computes a rank-`rank` decomposition of `tensor` such that::
@@ -271,3 +272,103 @@ def als_lasso(tensor,
         else:
             return cp_tensor
 
+
+class SparseCP(DecompositionMixin):
+    """Sparse Candecomp-Parafac decomposition.
+    
+    """
+    def __init__(
+        self, 
+        rank, 
+        lambdas, 
+        nonneg_modes=None, 
+        init='random', 
+        tol=1e-6, 
+        n_iter_max=1000, 
+        random_state=None, 
+        n_initializations=1
+    ):
+        # initialize passed parameters
+        self.rank = rank
+        self.lambdas = lambdas
+        self.nonneg_modes = nonneg_modes
+        self.init = init
+        self.tol = tol
+        self.n_iter_max = n_iter_max
+        self.random_state = random_state
+        self.n_initializations = n_initializations
+        
+        # initialize internal parameters
+        self._best_cp_index = None
+        
+    @property  
+    def decomposition(self):
+        if self._best_cp_index is None:
+            raise AttributeError('The model has not been fit with data.')
+        else:
+            return self.candidates_[self._best_cp_index]
+        
+    @property  
+    def loss(self):
+        if self._best_cp_index is None:
+            raise AttributeError('The model has not been fit with data.')
+        else:
+            return self.candidate_losses_[self._best_cp_index]
+        
+    def fit_transform(
+        self, 
+        tensor, 
+        mttkrp_optimization='opt_einsum', 
+        threads=None, 
+        verbose=0, 
+        return_losses=False
+    ):
+        """Fit model to data
+        
+        """
+        # initialize lists of candidate cp_tensors and their losses
+        candidates = list()
+        candidate_losses = list()
+        
+        # initialize lowest error
+        lowest_err = float('inf')
+        
+        # run multiple initializations
+        for i in range(self.n_initializations):
+            if verbose > 0:
+                print('\nBeginning initialization {} of {}'.format(
+                    i+1, self.n_initializations))
+            # fit model
+            cp, loss = als_lasso(
+                tensor, 
+                self.rank, 
+                self.lambdas, 
+                nonneg_modes=self.nonneg_modes, 
+                init=self.init, 
+                tol=self.tol, 
+                n_iter_max=self.n_iter_max, 
+                mttkrp_optimization=mttkrp_optimization, 
+                random_state=self.random_state, 
+                threads=threads, 
+                verbose=verbose - 1, 
+                return_losses=True
+            )
+            # store candidates
+            candidates.append(cp)
+            candidate_losses.append(loss)
+            # keep best fit
+            if loss[-1] < lowest_err:
+                lowest_err = loss[-1]
+                best_cp_index = i
+        
+        # store results
+        self.candidates_ = candidates
+        self.candidate_losses_ = candidate_losses
+        self._best_cp_index = best_cp_index
+        
+        # return best decomposition and, optionally, losses
+        if return_losses:
+            return candidates[best_cp_index], candidate_losses[best_cp_index]
+        else:
+            return candidates[best_cp_index]
+    
