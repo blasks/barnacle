@@ -333,6 +333,9 @@ class SparseCP(DecompositionMixin):
         # initialize lowest error
         lowest_err = float('inf')
         
+        # initialize random state
+        rns = check_random_state(self.random_state)
+        
         # run multiple initializations
         for i in range(self.n_initializations):
             if verbose > 0:
@@ -348,7 +351,7 @@ class SparseCP(DecompositionMixin):
                 tol=self.tol, 
                 n_iter_max=self.n_iter_max, 
                 mttkrp_optimization=mttkrp_optimization, 
-                random_state=self.random_state, 
+                random_state=rns, 
                 threads=threads, 
                 verbose=verbose - 1, 
                 return_losses=True
