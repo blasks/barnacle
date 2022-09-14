@@ -302,14 +302,14 @@ class SparseCP(DecompositionMixin):
         self._best_cp_index = None
         
     @property  
-    def decomposition(self):
+    def decomposition_(self):
         if self._best_cp_index is None:
             raise AttributeError('The model has not been fit with data.')
         else:
             return self.candidates_[self._best_cp_index]
         
     @property  
-    def loss(self):
+    def loss_(self):
         if self._best_cp_index is None:
             raise AttributeError('The model has not been fit with data.')
         else:
