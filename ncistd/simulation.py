@@ -287,7 +287,7 @@ def simulated_sparse_tensor(shape,
     if densities is None:
         densities = np.ones(rank)
     if factor_dist_list is None:
-        factor_dist_list = [scipy.stats.uniform() for i in range(rank)]
+        factor_dist_list = [stats.uniform() for i in range(rank)]
     if weights is None:
         weights = np.ones(rank)
     factors = []
