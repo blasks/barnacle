@@ -66,7 +66,20 @@ def test_correct_factors(best_decomposition):
 #   can be called once. Then the output can be tested in multiple ways.
 
 
+# loss is monotonically decreasing
+
+# l2 norm of factors is 1
+
+# working here
+
+
 # decomposition with no sparsity penalty should be equivalent to standard
 # CP decomposition by ALS
 
-# decomposition 
+# # resources
+
+# https://realpython.com/pytest-python-testing/
+# https://docs.pytest.org/en/7.1.x/how-to/fixtures.html#how-to-fixtures
+# https://docs.pytest.org/en/7.1.x/reference/reference.html?highlight=tolerance
+# http://tensorly.org/viz/stable/index.html
+ 
