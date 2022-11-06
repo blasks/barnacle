@@ -2,18 +2,20 @@ from ncistd import (
     simulated_sparse_tensor, 
     als_lasso
 )
+import numpy as np
 import pytest
 from pytest import approx
 import scipy
 import tlviz
 
-# simulated data fixture
+
+# Arrange: simulated data
 @pytest.fixture
 def simulated_data():
     sim_tensor = simulated_sparse_tensor(
-        shape=[50, 30, 20],                
-        rank=10,                         
-        densities=[.2, .2, .5], 
+        shape=[10, 10, 10],                
+        rank=5,                         
+        densities=[.3, .3, .3], 
         factor_dist_list=[scipy.stats.uniform(loc=-1, scale=2), 
                           scipy.stats.uniform(), 
                           scipy.stats.uniform()], 
@@ -22,59 +24,100 @@ def simulated_data():
     return sim_tensor
 
 
-# best of 10 decompositions fixture
+# Act: decompose tensor with als_lasso()
 @pytest.fixture
-def best_decomposition(simulated_data):
-    # assign simulated cp data
-    cp_sim = simulated_data
-    # parameters
-    sparsity = [0.0001, 0.0, 0.0]
-    n_components = cp_sim.rank
-    nonnegativity = [1, 2]
-    # decompose
-    lowest_err = float('inf')
-    # multiple initializations
-    for i in range(10):
-        # fit model
-        cp_i, err = als_lasso(
-            cp_sim.to_tensor(), 
-            rank=n_components, 
-            lambdas=sparsity, 
-            nonneg_modes=nonnegativity, 
-            random_state=i, 
-            mttkrp_optimization='opt_einsum', 
-            return_losses=True
-        )
-        # keep best fit
-        if err[-1] < lowest_err:
-            lowest_err = err[-1]
-            best_cp = cp_i
-            best_err = err
-    return cp_sim, best_cp
+def decomposition(simulated_data):
+    # decompose simulated tensor
+    cp, loss = als_lasso(
+        tensor=simulated_data.to_tensor(
+            noise_level=0, 
+            sparse_noise=True, 
+            random_state=None
+        ), 
+        rank=5, 
+        lambdas=[0.1, 0.0, 0.0], 
+        nonneg_modes=[1, 2], 
+        init='random', 
+        tol=1e-6, 
+        n_iter_max=1000,  
+        random_state=1987, 
+        threads=None, 
+        verbose=0, 
+        return_losses=True
+    )
+    return cp, loss
 
 
-def test_correct_factors(best_decomposition):
-    # get simulated data and decomposition
-    cp_sim, cp_fit = best_decomposition
-    # calculated fms
-    fms = tlviz.factor_tools.factor_match_score(cp_sim, cp_fit)
-    # check that the fms is almost identical
-    assert fms == approx(0.9999997)
+def test_no_nans_in_cptensor(decomposition):
+    cp, _ = decomposition
+    nans = [np.any(np.isnan(f)) for f in cp.factors]
+    assert not np.any(nans)
+    
+def test_no_nans_in_loss(decomposition):
+    _, loss = decomposition
+    assert not np.any(np.isnan(loss))
+    
+def test_loss_monotonically_decreasing(decomposition):
+    _, loss = decomposition
+    assert np.all(np.diff(loss) <= 0.0)
+    
+# def test_loss_matches_
 
-# TODO: Make decomposition test class
-#   Within this the data can be generated once, and the decomposition 
-#   can be called once. Then the output can be tested in multiple ways.
+# tests for every decomposition:
+#   - all factors are floats
+#   - loss is floats
+#   - loss is monotonically decreasing
+#   - last delta loss is less than tolerance for converged tensors
+#   - last delta loss is greater than tolerance for non-converged tensors
+#   - loss actually matches loss equation
+#   - l2 norm of norm-constrained factors is 1
+#   - correct factors (within tolerance) acheived with optimal settings
 
 
-# loss is monotonically decreasing
 
-# l2 norm of factors is 1
+# small suite of tensors (4):
+#    - different sizes
+#       - [10, 10, 10], [100, 10, 10], [10, 100, 10], [10, 10, 100]
+#    - different ranks
+#       - 5, 5, 1, 10
+#    - different sparsities
+#       - 0.3, 0.3, 0.3, 1
+#    - different nn patterns
+#       - [1, 2], [1, 2], [1, 2, 3], []
 
-# working here
+# a suite of different decompositions (testing als_lasso):
+#    - noisy and non-noisy
+#    - correct rank, under rank, over rank
+#       - 1, 5, 10
+#    - no sparsity, optimal sparsity, too much sparsity
+#       - [0, 0, 0], [.1, 0, 0], [.1, .1, 0], [.1, .1, .1], [10, 0, 0]
+#    - no nn, correct nn, too much nn
+#       - [], [1, 2], [1, 2, 3]
+#    - max_iter=100, tol=1e-6, n_inits=1
 
+# tests for every decomposition:
+#   - all factors are floats
+#   - loss is floats
+#   - loss is monotonically decreasing
+#   - last delta loss is less than tolerance for converged tensors
+#   - last delta loss is greater than tolerance for non-converged tensors
+#   - loss actually matches loss equation
+#   - l2 norm of norm-constrained factors is 1
+#   - correct factors (within tolerance) acheived with optimal settings
 
-# decomposition with no sparsity penalty should be equivalent to standard
-# CP decomposition by ALS
+# special decomposition tests (testing SparseCP):
+#   - max_iter=None, tol=1e-8 -> acheives convergence
+#   - n_inits=10
+#       - returned model actually has lowest loss
+#       - all losses are different 
+#   - same random seed results in same answers
+#       - same factors between each initialization
+#       - same losses between each initialization
+#   - different random seed results in different answers
+
+# decomposition with no sparsity penalty, nn constraint
+# should be equivalent to standard CP decomposition by ALS 
+# (with norm constraint?)
 
 # # resources
 
