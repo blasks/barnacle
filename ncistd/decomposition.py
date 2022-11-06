@@ -1,20 +1,18 @@
+import warnings
+
 import numpy as np
 import opt_einsum as oe
-from spams import lasso
-import tensorly as tl 
-from tensorly import unfold, check_random_state, cp_normalize
-from tensorly.cp_tensor import cp_to_tensor, unfolding_dot_khatri_rao
+import tensorly as tl
+from tensorly import check_random_state
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
-from tensorly.tenalg import khatri_rao
 from threadpoolctl import threadpool_limits
-from tlab.cp_tensor import store_cp_tensor
-import warnings
+
+from .fista import fista_solve
 
 
 def _create_mttkrp_function(shape, rank):
-    """Helper function to generate the mttkrp computation function to be 
-    used with the `mttkrp_optimization='opt_einsum'` option in `als_lasso`. 
+    """Helper function to generate the mttkrp computation function
     """
     # define einsum paths for each skip mode
     mttkrp_paths = [
@@ -38,8 +36,7 @@ def als_lasso(
     nonneg_modes=None, 
     init='random', 
     tol=1e-6, 
-    n_iter_max=1000, 
-    mttkrp_optimization='opt_einsum', 
+    n_iter_max=1000,  
     random_state=None, 
     threads=None, 
     verbose=0, 
@@ -88,14 +85,6 @@ def als_lasso(
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, an error will be raised.
-    mttkrp_optimization : {'opt_einsum', 'tensorly', None}, default is 'opt_einsum'
-        Inner loop optimization using the Matricicized Tensor Times Khatri-Rao
-        Product (MTTKRP).
-            'opt_einsum' : The opt_einsum package is used to produce the MTTKRP 
-                (only works for mode-3 tensors).
-            'tensorly' : The tensorly.cp_tensor.unfolding_dot_khatri_rao 
-                function is used to produce the MTTKRP.
-            None : No MTTKRP optimization is used.
     random_state : {None, int, numpy.random.RandomState}, default is None
         Used to initialized factor matrices and weights.
     threads : int, default is None
@@ -116,10 +105,7 @@ def als_lasso(
     losses : list
         A list of loss values calculated at each iteration of the algorithm. 
         Only returned when `return_losses` is set to True.
-    """
-    # set threads for lasso function
-    lasso_threads = -1 if threads is None else threads
-    
+    """    
     # wrap operations in threadpool limit
     with threadpool_limits(limits=threads, user_api='blas'):
     
@@ -139,9 +125,8 @@ def als_lasso(
                 'The number of sparsity coefficients in `lambdas`' +
                 'is not equal to the number of modes in `tensor`.'
             )
-            
-        # set modes without L2 sparsity penalization to be L2 normalized
-        normalize_modes = [i for i, l in enumerate(lambdas) if l == 0.0]
+        if any(lambdas < 0):
+            raise ValueError("L1 regularization must be nonnegative.")
             
         # initialize list to store losses
         losses = []
@@ -153,10 +138,12 @@ def als_lasso(
             init=init, 
             random_state=random_state
         )
+        weights = None  # Make sure the weights are 1
+
+        tensor_norm_sq = tl.norm(tensor)**2
         
         # build MTTKRP function if opt_einsum optimization has been selected
-        if mttkrp_optimization == 'opt_einsum':
-            compute_mttkrp = _create_mttkrp_function(tensor.shape, rank)
+        compute_mttkrp = _create_mttkrp_function(tensor.shape, rank)
         
         # begin iterations
         for iteration in range(n_iter_max):
@@ -167,82 +154,50 @@ def als_lasso(
             for mode in range(n_modes):
                 if verbose > 3:
                     print('\tMode {} of {}'.format(mode, n_modes), flush=True)
-                
-                # unfold data tensor along mode
-                X_unfolded = unfold(tensor, mode)
-                
-                # ALS lasso without MTTKRP optimization
-                if mttkrp_optimization is None:
-                    # take the khatri_rao product of all factors except factors[mode]
-                    kr_product = khatri_rao(factors, None, skip_matrix=mode)
-                    # generate new factor by solving lasso problem
-                    factor_update = lasso(
-                        X=np.asfortranarray(X_unfolded.T), 
-                        D=np.asfortranarray(kr_product), 
-                        lambda1=lambdas[mode], 
-                        pos=nonneg[mode], 
-                        numThreads=lasso_threads
-                    )
-                    
-                # ALS lasso with MTTKRP optimization
-                else:
-                    # form DtD, containing kr_product.T @ kr_product
-                    DtD = np.ones((rank, rank))
-                    for krp_mode in range(n_modes):
-                        if krp_mode == mode:
-                            continue
-                        DtD *= np.matmul(factors[krp_mode].T, factors[krp_mode])
-                        
-                    # form MTTKRP with opt_einsum optimization
-                    if mttkrp_optimization == 'opt_einsum':
-                        # form DtX, containing kr_product.T @ X_unfolded
-                        DtX = compute_mttkrp(tensor, factors, mode)
-                        
-                    # form MTTKRP with tensorly function
-                    elif mttkrp_optimization == 'tensorly':
-                        # form DtX, containing kr_product.T @ X_unfolded
-                        DtX = unfolding_dot_khatri_rao(tensor, (None, factors), mode)
-                    
-                    # unrecognized optimization option 
-                    else:
-                        raise ValueError('The argument passed to ' + 
-                                        '`mttkrp_optimization` is not reconized.')
-                
-                    # generate new factor by solving lasso problem with MTTKRP
-                    factor_update = lasso(
-                        X=np.asfortranarray(X_unfolded.T), 
-                        Q=np.asfortranarray(DtD), 
-                        q=np.asfortranarray(DtX.T), 
-                        lambda1=lambdas[mode], 
-                        pos=nonneg[mode], 
-                        numThreads=lasso_threads
-                    )
-                    
-                # convert factor back to numpy array and transpose
-                factor_update = factor_update.toarray().T
-                
-                # normalize new factor if no L1 sparsity penalty was applied
-                if mode in normalize_modes:
-                    scales = tl.norm(factor_update, 2, axis=0)
-                    # replace zeros with ones
-                    weights = tl.where(
-                        scales==0, 
-                        tl.ones(tl.shape(scales), **tl.context(factor_update)), 
-                        scales
-                    )
-                    # normalize factor update
-                    factor_update = factor_update / tl.reshape(weights, (1, -1))
-                
-                # update factor
-                factors[mode] = factor_update
-                    
-            # compute loss using tensor reconstructed from latest factor updates
-            reconstruction = cp_to_tensor((weights, factors))
+
+                # form DtD, containing kr_product.T @ kr_product
+                DtD = np.ones((rank, rank))
+                for krp_mode in range(n_modes):
+                    if krp_mode == mode:
+                        continue
+                    DtD *= np.matmul(factors[krp_mode].T, factors[krp_mode])
+                DtX = compute_mttkrp(tensor, factors, mode)
+
+                # generate new factor by solving lasso problem with MTTKRP
+                factors[mode] = fista_solve(
+                    lhs=DtD, 
+                    rhs=DtX.T,
+                    l1_reg=0.5*lambdas[mode],
+                    nonnegative=nonneg[mode], 
+                    normalize=lambdas[mode]==0,
+                    init=factors[mode].T
+                ).T
+                # fista_solve solves
+                #     min 0.5 ||DY - X||^2 + lambda ||Y||_1.
+                # We want to solve
+                #     min ||DY - X||^2 + lambda ||Y||_1,
+                # so we multiply the whole problem by 2 (doesn't change anything) and see that
+                # fista_solve solves
+                #     min ||DY - X|| + 2 lambda ||Y||_1.
+                # If we multiply the lambda by 0.5, then we (informally) get
+                #     min ||DY - X|| + 2 (0.5) lambda ||Y||_1 = min ||DY - X|| + lambda ||Y||_1
+                # which is what we want to solve.
+
+            # Compute loss using tensor reconstructed from latest factor updates
+            # Faster version to compute the loss, uses the fact that
+            # ||DY - X||^2 = Tr(Y^T D^TD X) - 2 Tr(X^T D^T B) + Tr(B^T B)
+            #              = ||X_estimated||^2 - 2 Tr(X^T D^T B) + ||X||^2
+            #              = cp_norm^2 + ||X||^2 - 2 sum(X^T * D^T B)
+            # where * is hadamard product and cp_norm can be estimated efficiently
+            iprod = tl.sum(tl.sum(DtX * factors[mode], axis=0))
+            factors_norm_sq = tl.cp_tensor.cp_norm((weights, factors))**2
+            sse = tensor_norm_sq + factors_norm_sq - 2*iprod
+
             # calculate L1 sparsity penalties
             factor_l1_norms = np.array([tl.norm(f, 1) for f in factors])
             penalties = tl.dot(lambdas, factor_l1_norms)
             # compute loss
-            loss = tl.norm(tensor - reconstruction, 2) ** 2 + penalties
+            loss = sse + penalties
             # append loss to history
             losses.append(loss)
             if verbose > 1:
@@ -265,14 +220,11 @@ def als_lasso(
                         print(message, flush=True)
                     warnings.warn(message)
         
-        # normalize converged cp tensor
-        cp_tensor = cp_normalize((weights, factors))
-        
         # return result
         if return_losses:
-            return cp_tensor, losses
+            return tl.cp_tensor.CPTensor((None, factors)), losses
         else:
-            return cp_tensor
+            return tl.cp_tensor.CPTensor((None, factors))
 
 
 class SparseCP(DecompositionMixin):
@@ -320,7 +272,6 @@ class SparseCP(DecompositionMixin):
     def fit_transform(
         self, 
         tensor, 
-        mttkrp_optimization='opt_einsum', 
         threads=None, 
         verbose=0, 
         return_losses=False
@@ -352,7 +303,6 @@ class SparseCP(DecompositionMixin):
                 init=self.init, 
                 tol=self.tol, 
                 n_iter_max=self.n_iter_max, 
-                mttkrp_optimization=mttkrp_optimization, 
                 random_state=rns, 
                 threads=threads, 
                 verbose=verbose - 1, 
