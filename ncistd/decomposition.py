@@ -182,6 +182,10 @@ def als_lasso(
                 # If we multiply the lambda by 0.5, then we (informally) get
                 #     min ||DY - X|| + 2 (0.5) lambda ||Y||_1 = min ||DY - X|| + lambda ||Y||_1
                 # which is what we want to solve.
+                
+                # raise error if factor is zeroed out completely
+                if tl.norm(factors[mode]) == 0.0:
+                    raise Exception('Mode {} factors zeroed out in iteration {}'.format(mode, iteration))
 
             # Compute loss using tensor reconstructed from latest factor updates
             # Faster version to compute the loss, uses the fact that
