@@ -79,9 +79,11 @@ def als_lasso(
         weight values for the output decomposition are set to '1'.
     tol : float, default is 1e-6
         Convergence tolerance. The algorithm is considered to have found the 
-        global minimum when the relative change in loss from one iteration 
-        to the next falls below the `tol` threshold. In other words,
-        convergence is defined as abs(loss[-2] - loss[-1]) / loss[-1] < `tol`. 
+        global minimum when the change in loss from one iteration 
+        to the next falls below the `tol` threshold. Note that the change in
+        loss calculation is relative when loss > 1 and absolute when loss <= 1. 
+        In other words, convergence is defined as:
+            abs(loss[-2] - loss[-1]) / max(loss[-1], 1) < `tol`
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, an error will be raised.
@@ -219,8 +221,8 @@ def als_lasso(
             
             # check convergence
             if tol != 0 and iteration != 0:
-                # calculate change in loss
-                loss_change = abs(losses[-2] - losses[-1]) / losses[-1]
+                # calculate change in loss (relative if loss is > 0, abso)
+                loss_change = abs(losses[-2] - losses[-1]) / max(losses[-1], 1)
                 # compare change in loss to tolerance
                 if loss_change < tol:
                     if verbose > 0:
