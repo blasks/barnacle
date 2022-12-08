@@ -114,10 +114,10 @@ def minimise_fista(lhs, rhs, init, l1_reg, prox, n_iter=10, tol=1e-6, return_err
         smooth_grad_y = compute_smooth_grad(y)
         losses.append(loss_x)
 
-        # break if x is zeroed out (values will not change further)
-        if np.linalg.norm(x) == 0.0:
-            break
-        elif np.linalg.norm(prev_x - x) / np.linalg.norm(x) + 1e-16 < tol:
+        # # break if x is zeroed out (values will not change further)
+        # if np.linalg.norm(x) == 0.0:
+        #     break
+        if np.linalg.norm(prev_x - x) / (np.linalg.norm(x) + 1e-16) < tol:
             n_static += 1
         else:
             n_static = 0

@@ -5,6 +5,7 @@ from ncistd import (
 import numpy as np
 from numpy.testing import (
     assert_, 
+    assert_array_equal, 
     assert_array_almost_equal
 )
 import pytest
@@ -18,7 +19,7 @@ from tlviz.factor_tools import factor_match_score
     params=[
         {'shape': [10, 10, 10], 'rank': 5, 'density': 0.3, 'nonneg': [1, 2]}, 
         # {'shape': [100, 10, 10], 'rank': 5, 'density': 0.3, 'nonneg': [1, 2]}, 
-        # {'shape': [10, 100, 10], 'rank': 1, 'density': 0.3, 'nonneg': [1, 2, 3]}, 
+        # {'shape': [10, 100, 10], 'rank': 1, 'density': 0.3, 'nonneg': [0, 1, 2]}, 
         # {'shape': [10, 10, 100], 'rank': 10, 'density': 1.0, 'nonneg': []}, 
     ]
 )
@@ -102,14 +103,14 @@ def test_als_lasso(
     assert_(np.all(delta_loss <= 0.0), 'Loss is not monotonically decreasing.')
     
     # check convergence criteria
-    if len(loss) < n_iter_max + 1:
-        # decomposition converged: check that final delta loss is less than tolerance
-        assert_(delta_loss[-1] < tol, 'Algorithm stopped iterating prematurely.')
-    else:
-        # TODO: catch warning -- it's possible that it converges exactly at n_iter_max
-        # decomposition didn't converge: 
-        # check that final delta loss is greater than tolerance
-        assert_(delta_loss[-1] >= tol, 'Algorithm failed to stop iterating after convergence.')
+    if len(delta_loss) > 0:
+        if len(loss) < n_iter_max + 1:
+            # decomposition converged: check that final delta loss is less than tolerance
+            assert_(delta_loss[-1] < tol, 'Algorithm stopped iterating prematurely.')
+        else:
+            # decomposition didn't converge: 
+            # check that final delta loss is greater than tolerance
+            assert_(delta_loss[-1] >= tol, 'Algorithm failed to stop iterating after convergence.')
     
     # check factor properties
     for i, factor in enumerate(cp.factors):
@@ -152,10 +153,14 @@ def test_als_lasso(
         verbose=0, 
         return_losses=True
     )
-    assert_array_almost_equal(loss, second_loss)
-    assert_array_almost_equal(cp.factors[0], second_cp.factors[0])
-    assert_array_almost_equal(cp.factors[1], second_cp.factors[1])
-    assert_array_almost_equal(cp.factors[2], second_cp.factors[2])
+    assert_array_equal(loss, second_loss)
+    assert_array_equal(cp.factors[0], second_cp.factors[0])
+    assert_array_equal(cp.factors[1], second_cp.factors[1])
+    assert_array_equal(cp.factors[2], second_cp.factors[2])
+    # assert_array_almost_equal(loss, second_loss)
+    # assert_array_almost_equal(cp.factors[0], second_cp.factors[0])
+    # assert_array_almost_equal(cp.factors[1], second_cp.factors[1])
+    # assert_array_almost_equal(cp.factors[2], second_cp.factors[2])
 
 
 # Testing outline
