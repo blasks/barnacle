@@ -67,6 +67,14 @@ def fista_step(x, y, t, lipschitz, smooth_grad_y, l1_reg, prox):
 def minimise_fista(lhs, rhs, init, l1_reg, prox, n_iter=10, tol=1e-6, return_err=False):
     """Use the FISTA algorithm to solve the given optimisation problem
     """
+    losses = []
+    # if provided data is all zeros, don't run fista, just return zero matrix
+    if (np.linalg.norm(lhs) == 0 or np.linalg.norm(rhs) == 0):
+        x = np.zeros_like(init)
+        if return_err:
+            return x, losses
+        return x
+    
     lipschitz = np.trace(lhs) / lhs.shape[0]  # Lower bound for lipschitz
 
     AtA = lhs
@@ -81,7 +89,6 @@ def minimise_fista(lhs, rhs, init, l1_reg, prox, n_iter=10, tol=1e-6, return_err
     loss_x = compute_smooth_loss(x)
     loss_y = loss_x
     smooth_grad_y = compute_smooth_grad(y)
-    losses = []
     n_static = 0
 
     for i in range(n_iter):
@@ -117,7 +124,7 @@ def minimise_fista(lhs, rhs, init, l1_reg, prox, n_iter=10, tol=1e-6, return_err
         # # break if x is zeroed out (values will not change further)
         # if np.linalg.norm(x) == 0.0:
         #     break
-        if np.linalg.norm(prev_x - x) / (np.linalg.norm(x) + 1e-16) < tol:
+        if np.linalg.norm(prev_x - x) / np.linalg.norm(x) + 1e-16 < tol:
             n_static += 1
         else:
             n_static = 0
