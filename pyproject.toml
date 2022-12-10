@@ -1,6 +1,54 @@
-[build-system]
-requires = [
-    "setuptools >= 42", 
-    "wheel"
+[tool.poetry]
+name = "ncistd"
+version = "0.1.0"
+description = "Python package for developing clustering methods that work for tensor structured data"
+authors = ["Stephen Blaskowski <stephen.blaskowski@gmail.com>"]
+readme = "README.md"
+repository = "https://github.com/blasks/ncistd"
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
 ]
-build-backend = "setuptools.build_meta"
+packages = [
+    { include = "ncistd" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+tensorly = "^0.7.0"
+numpy = "^1.23.1"
+opt-einsum = "^3.3.0"
+threadpoolctl = "^3.1.0"
+scikit-learn = "^1.1.1"
+seaborn = "^0.11.2"
+scipy = "^1.9.0"
+plotly = "^5.9.0"
+matplotlib = "^3.5.2"
+tensorly-viz = "^0.1.4"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+pylint = "^2.15.8"
+
+[tool.pylint.typecheck]
+generated-members = "tensorly.tenalg.outer"
+
+[tool.pylint.format]
+good-names-rgxs = ".*"
+max-line-length = 130
+
+[tool.pylint.'message control']
+disable = [
+  "missing-docstring",
+  "unused-argument",
+  "redefined-builtin",
+  "consider-using-f-string",
+  "trailing-whitespace",
+  "trailing-newlines"
+]
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
