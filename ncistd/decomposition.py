@@ -1,6 +1,6 @@
+import logging
 import numbers
 import time
-import warnings
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
@@ -12,6 +12,7 @@ from threadpoolctl import threadpool_limits
 
 from .fista import fista_solve
 
+logger = logging.getLogger(__name__)
 
 def _create_mttkrp_function(shape, rank):
     """Helper function to generate the mttkrp computation function
@@ -151,13 +152,11 @@ def als_lasso(
         
         # begin iterations
         for iteration in range(n_iter_max):
-            if verbose > 2:
-                print('\nStarting iteration {}'.format(iteration), flush=True)
+            logger.debug('\nStarting iteration %d', iteration)
                 
             # loop through modes
             for mode in range(n_modes):
-                if verbose > 3:
-                    print('\tMode {} of {}'.format(mode, n_modes), flush=True)
+                logger.debug('\tMode %d of %d', mode, n_modes)
 
                 # form DtD, containing kr_product.T @ kr_product
                 DtD = np.ones((rank, rank))
@@ -218,8 +217,7 @@ def als_lasso(
             loss = sse + penalties
             # append loss to history
             losses.append(loss)
-            if verbose > 1:
-                print('loss: {}'.format(losses[-1]), flush=True)
+            logger.debug('loss: %s', losses[-1])
             
             # check convergence
             if tol != 0 and iteration != 0:
@@ -227,17 +225,12 @@ def als_lasso(
                 loss_change = abs(losses[-2] - losses[-1]) / max(losses[-1], 1)
                 # compare change in loss to tolerance
                 if loss_change < tol:
-                    if verbose > 0:
-                        message = 'Algorithm converged after {} iterations'.format(iteration+1)
-                        print(message, flush=True)
+                    logger.info('Algorithm converged after %d iterations', iteration+1)
                     break
                 # close out with warnings if the iteration maximum has been reached
                 elif iteration == n_iter_max - 1:
-                    message = 'Algorithm failed to converge after {} iterations'.format(iteration+1)
-                    if verbose > 0:
-                        print(message, flush=True)
-                    warnings.warn(message)
-        
+                    logger.warning('Algorithm failed to converge after %d iterations', iteration+1)
+
         # return result
         if return_losses:
             return tl.cp_tensor.CPTensor((None, factors)), losses
@@ -246,13 +239,11 @@ def als_lasso(
 
 
 def _als_lasso_wrapper(i, n, kwargs):
-    if kwargs['verbose'] > 0:
-        print('Beginning initialization %d of %d' % (i+1, n), flush=True)
+    logger.debug('Beginning initialization %d of %d', i+1, n)
     t0 = time.time()
     results = als_lasso(**kwargs)
     elapsed_s = time.time() - t0
-    if kwargs['verbose'] > 0:
-        print('Completed initialization %d of %d in %s seconds' % (i+1, n, elapsed_s))
+    logger.debug('Completed initialization %d of %d in %s seconds', i+1, n, elapsed_s)
     return results
 
 
@@ -318,9 +309,10 @@ class SparseCP(DecompositionMixin):
         
         # run multiple initializations
         if isinstance(self.random_state, numbers.Integral):
-            if verbose > 1:
-                pargs = (self.random_state, self.random_state + self.n_initializations - 1)
-                print('initialization random states are %d - %d' % pargs)
+            logger.debug(
+                'initialization random states are %d - %d',
+                self.random_state, self.random_state + self.n_initializations - 1
+            )
         init_args = ([], [], [])
         for i in range(self.n_initializations):
             init_args[0].append(i)
