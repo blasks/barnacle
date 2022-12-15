@@ -1,9 +1,11 @@
+import numbers
+import time
 import warnings
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 import opt_einsum as oe
 import tensorly as tl
-from tensorly import check_random_state
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from threadpoolctl import threadpool_limits
@@ -243,6 +245,17 @@ def als_lasso(
             return tl.cp_tensor.CPTensor((None, factors))
 
 
+def _als_lasso_wrapper(i, n, kwargs):
+    if kwargs['verbose'] > 0:
+        print('Beginning initialization %d of %d' % (i+1, n), flush=True)
+    t0 = time.time()
+    results = als_lasso(**kwargs)
+    elapsed_s = time.time() - t0
+    if kwargs['verbose'] > 0:
+        print('Completed initialization %d of %d in %s seconds' % (i+1, n, elapsed_s))
+    return results
+
+
 class SparseCP(DecompositionMixin):
     """Sparse Candecomp-Parafac decomposition.
     
@@ -289,6 +302,7 @@ class SparseCP(DecompositionMixin):
         self, 
         tensor, 
         threads=None, 
+        init_jobs=1, 
         verbose=0, 
         return_losses=False
     ):
@@ -302,32 +316,41 @@ class SparseCP(DecompositionMixin):
         # initialize lowest error
         lowest_err = float('inf')
         
-        # initialize random state
-        rns = check_random_state(self.random_state)
-        
         # run multiple initializations
+        if isinstance(self.random_state, numbers.Integral):
+            if verbose > 1:
+                pargs = (self.random_state, self.random_state + self.n_initializations - 1)
+                print('initialization random states are %d - %d' % pargs)
+        init_args = ([], [], [])
         for i in range(self.n_initializations):
-            if verbose > 0:
-                print('\nBeginning initialization {} of {}'.format(
-                    i+1, self.n_initializations))
-            # fit model
-            cp, loss = als_lasso(
-                tensor, 
-                self.rank, 
-                self.lambdas, 
-                nonneg_modes=self.nonneg_modes, 
-                init=self.init, 
-                tol=self.tol, 
-                n_iter_max=self.n_iter_max, 
-                random_state=rns, 
-                threads=threads, 
-                verbose=verbose - 1, 
-                return_losses=True
-            )
-            # store candidates
-            candidates.append(cp)
-            candidate_losses.append(loss)
-            # keep best fit
+            init_args[0].append(i)
+            init_args[1].append(self.n_initializations)
+            init_args[2].append({
+                'tensor': tensor,
+                'rank': self.rank,
+                'lambdas': self.lambdas,
+                'nonneg_modes': self.nonneg_modes,
+                'init': self.init,
+                'tol': self.tol,
+                'n_iter_max': self.n_iter_max,
+                'threads': threads,
+                'verbose': verbose - 1,
+                'return_losses': True
+            })
+            if isinstance(self.random_state, numbers.Integral):
+                init_args[2][-1]['random_state'] = self.random_state + i
+            else:
+                init_args[2][-1]['random_state'] = self.random_state
+        init_jobs = min(self.n_initializations, init_jobs)
+        with ProcessPoolExecutor(max_workers=init_jobs) as pool:
+            results = pool.map(_als_lasso_wrapper, *init_args)
+
+        # store candidates cp_tensors and their losses
+        for r in results:
+            candidates.append(r[0])
+            candidate_losses.append(r[1])
+        # keep best fit
+        for i, loss in enumerate(candidate_losses):
             if loss[-1] < lowest_err:
                 lowest_err = loss[-1]
                 best_cp_index = i
