@@ -32,9 +32,6 @@ pytest-xdist = "^3.1.0"
 pytest = "^7.2.0"
 pylint = "^2.15.8"
 
-[tool.pylint.typecheck]
-generated-members = "tensorly.tenalg.outer"
-
 [tool.pylint.format]
 good-names-rgxs = ".*"
 max-line-length = 130
@@ -49,6 +46,13 @@ disable = [
   "trailing-newlines"
 ]
 
+[tool.pylint.main]
+extension-pkg-allow-list = [
+  "numpy"
+]
+ignored-modules = [
+  "tensorly.tenalg"
+]
 
 [build-system]
 requires = ["poetry-core"]
