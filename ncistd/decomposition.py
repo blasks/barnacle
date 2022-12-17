@@ -339,6 +339,8 @@ class SparseCP(DecompositionMixin):
             })
             if isinstance(self.random_state, numbers.Integral):
                 init_args[2][-1]['random_state'] = self.random_state + i
+            elif isinstance(self.random_state, np.random.RandomState):
+                init_args[2][-1]['random_state'] = self.random_state.randint(0, 1e6) + i
             else:
                 init_args[2][-1]['random_state'] = self.random_state
         init_jobs = min(self.n_initializations, init_jobs)
