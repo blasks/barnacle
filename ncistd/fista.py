@@ -20,7 +20,7 @@ def nn_prox(x, reg):
 
 
 def l2ball_prox(x, reg):
-    return x / np.maximum(1, np.linalg.norm(x, axis=0))
+    return x / np.maximum(1, np.linalg.norm(x, axis=1, keepdims=True))
 
 
 def _should_continue_backtracking(new_x, y, loss_new_x, loss_y, smooth_grad_y, lipschitz):
