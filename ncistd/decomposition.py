@@ -219,6 +219,13 @@ def als_lasso(
             if verbose > 1:
                 print('loss: {}'.format(losses[-1]), flush=True)
             
+            # stop iterations if loss has acheived zero 
+            if loss == 0.0:
+                if verbose > 0:
+                    message = 'Algorithm converged after {} iterations'.format(iteration+1)
+                    print(message, flush=True)
+                break
+            
             # check convergence
             if tol != 0 and iteration != 0:
                 # calculate change in loss (relative if loss is > 0, abso)
