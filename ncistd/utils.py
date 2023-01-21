@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 from plotly.express import scatter_3d
 from sklearn.metrics import jaccard_score
 from tensorly import check_random_state
+from tensorly.cp_tensor import CPTensor
 
 ##########
 # Function to plot interactive visualization of 3d tensor
@@ -239,6 +240,20 @@ def plot_factors_heatmap(factors,
                 ax=ax[i]
             )
     return fig, ax
+
+##########
+# function for getting rid of zero factors
+##########
+def consolidate_cp(cp_tensor):
+    """Removes zeroed out factors from cp tensor"""
+    indexer = np.array(cp_tensor.weights != 0)
+    for factor in cp_tensor.factors:
+        indexer *= (np.linalg.norm(factor, axis=0) != 0)
+    cleaned_factors = []
+    for factor in cp_tensor.factors:
+        cleaned_factors.append(factor.T[indexer].T)
+    cleaned_weights = cp_tensor.weights[indexer]
+    return CPTensor((cleaned_weights, cleaned_factors))
 
 ##########
 # function to generate tensorly CPTensor of all zeros
