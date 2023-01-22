@@ -13,7 +13,7 @@ from numpy.testing import (
 import pytest
 import scipy
 import tensorly as tl
-from tlviz.factor_tools import factor_match_score
+import tlviz
 
 
 @pytest.fixture
@@ -152,21 +152,6 @@ def test_als_lasso(
                 err_msg='Factor matrix {} did not meet unit 2-norm constraint'.format(i)
             )
     
-    # TODO: Find optimal sparsity penalties and limits for these test tensors
-    # for optimal decomposition parameters
-    # if rank == sim_params['rank'] and nonneg_modes == sim_params['nonneg'] and 0.1 in lambdas:
-        # check difference between simulated data and reconstruction is within tolerance
-        # check difference between true factors and learned factors is within tolerance
-        # check factor match score is within tolerance
-        
-        # lambdas = [0.05, 0, 0] for all
-        
-        # 0::: l: 0.01, fit: 0.9999, fms: 0.70 (no noise)
-        # 1::: l: 0.01, fit: 0.9999, fms: 0.985 (no noise)
-        # 1::: l: 0.1, fit: 0.572, fms: 0.702 (1:1 noise)
-        # 2::: l: , fit: , fms: ()
-        # 3::: l: , fit: , fms: ()
-
 
 @pytest.mark.parametrize('noise_level', [0.1])
 @pytest.mark.parametrize('lambdas', [[.1, 0, 0]])
@@ -220,13 +205,68 @@ def test_als_lasso_random_seed(
     assert_array_equal(cp.factors[0], second_cp.factors[0])
     assert_array_equal(cp.factors[1], second_cp.factors[1])
     assert_array_equal(cp.factors[2], second_cp.factors[2])
+    
 
+def test_als_lasso_solutions(
+    simulated_data, 
+    tolerance, 
+    n_iter_max, 
+    seed
+):
+    # set parameters
+    noise_level = 0.0
+    lambdas = [0.001, 0, 0]
+    # get simulated data and parameters from fixture
+    sim_tensor, sim_params = simulated_data
+    # tensorize simulated data
+    X = sim_tensor.to_tensor(
+        noise_level=noise_level, 
+        sparse_noise=True, 
+        random_state=seed
+    )
+    # decompose simulated tensor with given parameters
+    cp, loss = als_lasso(
+        tensor=X, 
+        rank=sim_params['rank'], 
+        lambdas=lambdas, 
+        nonneg_modes=sim_params['nonneg'], 
+        init='random', 
+        tol=tolerance, 
+        n_iter_max=n_iter_max,  
+        random_state=seed, 
+        threads=None, 
+        verbose=0, 
+        return_losses=True
+    )
+    # target solution metrics
+    solution_metrics = {
+        0: {'fit': 0.99998935, 'fms': 0.71473557, 'factor0_tol': None}, 
+        1: {'fit': 0.99999899, 'fms': 0.99911612, 'factor0_tol': 0.002}, 
+        2: {'fit': 0.99999999, 'fms': 0.99990241, 'factor0_tol': 0.00003}, 
+        3: {'fit': 0.99737269, 'fms': 0.80448913, 'factor0_tol': None}
+    }
+    target_metrics = solution_metrics[sim_params['id']]
+    # check fit of solution
+    assert_allclose(tlviz.model_evaluation.fit(cp, X), target_metrics['fit'])
+    # calculate fms and get optimal permutation
+    fms, perm = tlviz.factor_tools.factor_match_score(
+        sim_tensor, 
+        cp, 
+        return_permutation=True, 
+        allow_smaller_rank=True
+    )
+    # check fms of solution
+    assert_allclose(fms, target_metrics['fms'])  
+    # if applicable, check the factor0 values against the simulation
+    if target_metrics['factor0_tol'] is not None:
+        cp_perm = tlviz.factor_tools.permute_cp_tensor(cp, perm)
+        np.testing.assert_allclose(
+            tl.cp_normalize(cp_perm).factors[0], 
+            tl.cp_normalize(sim_tensor).factors[0], 
+            atol=target_metrics['factor0_tol'], 
+            err_msg='Factor matrix 0 did not match simulation (atol={})'.format(target_metrics['factor0_tol'])
+        )
 
-# Testing outline
-
-# tests for every decomposition:
-#   - loss actually matches loss equation
-#   - correct factors (within tolerance) acheived with optimal settings
 
 # tests for SparseCP interface:
 #   - max_iter=None, tol=1e-8 -> acheives convergence
@@ -237,11 +277,3 @@ def test_als_lasso_random_seed(
 #       - same factors between each initialization
 #       - same losses between each initialization
 #   - different random seed results in different answers
-
-
-# # resources
-
-# https://realpython.com/pytest-python-testing/
-# https://docs.pytest.org/en/7.1.x/how-to/fixtures.html#how-to-fixtures
-# https://docs.pytest.org/en/7.1.x/reference/reference.html?highlight=tolerance
-# http://tensorly.org/viz/stable/index.html
