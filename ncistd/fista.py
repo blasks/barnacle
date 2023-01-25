@@ -7,25 +7,26 @@ def l1_prox(x, reg):
     
     Parameters
     ----------
-    x : numpy.array
+    x : numpy.ndarray
         Input array. 
     reg : float
         L1 sparsity penalty (reg >= 0). 
         
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
         Input array with l1 proximal operation applied. 
     """
     sign = np.sign(x)
     return sign * np.maximum(0, np.abs(x) - reg)
+
 
 def nn_prox(x, reg):
     """Proximal operator to apply non-negativity constraint. 
     
     Parameters
     ----------
-    x : numpy.array
+    x : numpy.ndarray
         Input array. 
     reg : float
         Not necessary, but included for continuity of the proximal operator
@@ -33,7 +34,7 @@ def nn_prox(x, reg):
         
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
         Input array with non-negativity constraint applied.
     """
     return np.maximum(0, x)
@@ -41,11 +42,11 @@ def nn_prox(x, reg):
 
 def l2ball_prox(x, reg):
     """Proximal operator to apply l2 normalization constraint. Constrains
-    l2-norm of the rows of x to be less than or equal to 1.
+    l2-norm of `x` to be less than or equal to 1.
     
     Parameters
     ----------
-    x : numpy.array
+    x : numpy.ndarray
         Input array. 
     reg : float
         Not necessary, but included for continuity of the proximal operator
@@ -53,7 +54,7 @@ def l2ball_prox(x, reg):
         
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
         Input array with l2 norm constraint applied.
     """
     return x / np.maximum(1, np.linalg.norm(x, axis=1, keepdims=True))
@@ -65,14 +66,14 @@ def nn_l1_prox(x, reg):
     
     Parameters
     ----------
-    x : numpy.array
+    x : numpy.ndarray
         Input array. 
     reg : float
         L1 sparsity penalty (reg >= 0). 
         
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
         Input array with non-negativity constraint and l1 proximal operation 
         applied.
     """
@@ -85,7 +86,7 @@ def nn_l2ball_prox(x, reg):
     
     Parameters
     ----------
-    x : numpy.array
+    x : numpy.ndarray
         Input array. 
     reg : float
         Not necessary, but included for continuity of the proximal operator
@@ -93,7 +94,7 @@ def nn_l2ball_prox(x, reg):
         
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
         Input array with non-negativity and l2 norm constraints applied.
     """
     return l2ball_prox(nn_prox(x, None), None)
@@ -107,20 +108,37 @@ def _should_continue_backtracking(
     smooth_grad_y, 
     lipschitz
 ):
-    """Based on FISTA with backtracking.
+    """Determines whether or not a backtracking line search to decrease the
+    step size should continue. Based on the 'FISTA with backtracking' 
+    algorithm outlined in Beck & Teboulle (2009). 
+    
+    If the step length is large, then a large decrease in loss should also be 
+    expected. If instead a large step results in a relatively small decrease in 
+    the loss, then the step is likely overshooting the target. To prevent this, 
+    the algorithm starts with a large guess for the step length, and decreases 
+    it until there is a sufficient decrease in the loss. This allows for
+    maximal initial step sizes to be refined as necessary, resulting in a 
+    speed up in the optimization.
     
     Parameters
     ----------
-    new_x : numpy.array
-    y : numpy.array  
-    loss_new_x : numpy.array  
-    loss_y : numpy.array   
-    smooth_grad_y : numpy.array   
+    new_x : numpy.ndarray
+        Updated solution vector `x`. 
+    y : numpy.ndarray
+        Momentum vector `y`. 
+    loss_new_x : numpy.ndarray
+        Loss resulting from updated solution vector `x`. 
+    loss_y : numpy.ndarray
+        Loss of momentum vector `y`. 
+    smooth_grad_y : numpy.ndarray
+        Gradient of momentum vector `y`. 
     lipschitz : float
+        Lipschitz coefficient.
         
     Returns
     -------
     continue_backtracking : bool
+        If True, indicates backtracking line search should continue.
     """
     update_vector = new_x - y
     update_distance = np.sum(update_vector**2) * lipschitz / 2.5
@@ -135,7 +153,9 @@ def create_loss(AtA, At_b):
     Parameters
     ----------
     AtA : numpy.ndarray
+        The matrix A^T A.
     At_b : numpy.ndarray
+        The vector A^T b.
         
     Returns
     -------
@@ -150,12 +170,14 @@ def create_loss(AtA, At_b):
 
 
 def create_gradient(AtA, At_b):
-    """Helper function to gradient function.
+    """Helper function to generate gradient function.
     
     Parameters
     ----------
     AtA : numpy.ndarray
+        The matrix A^T A.
     At_b : numpy.ndarray
+        The vector A^T b.
         
     Returns
     -------
@@ -167,24 +189,42 @@ def create_gradient(AtA, At_b):
     return grad
 
 
-def fista_step(x, y, t, lipschitz, smooth_grad_y, l1_reg, prox):
+def fista_step(
+    x, 
+    y, 
+    t, 
+    lipschitz, 
+    smooth_grad_y, 
+    l1_reg, 
+    prox
+):
     """Function to take one FISTA step.
     
     Parameters
     ----------
-    x : numpy.array
-    y : numpy.array 
+    x : numpy.ndarray
+        Initial solution vector `x`. 
+    y : numpy.ndarray 
+        Initial solution vector `x` with momentum.
     t : float
+        Momentum coefficient.
     lipschitz : float
-    smooth_grad_y numpy.array
+        Lipschitz coefficient.
+    smooth_grad_y : numpy.ndarray
+        Gradient of `y`. 
     l1_reg : float
+        L1 regularization coefficient. 
     prox : function
+        Proximal operator.
         
     Returns
     -------
-    new_x : numpy.array
-    new_y : numpy.array
+    new_x : numpy.ndarray
+        Updated solution vector `x`.
+    new_y : numpy.ndarray
+        Updated solution vector `x` with momentum.
     new_t : float
+        Updated momentum coefficient.
     """
     intermediate_step = (1 / lipschitz) * smooth_grad_y
     new_x = prox(y - intermediate_step, l1_reg / lipschitz)
@@ -206,24 +246,41 @@ def minimise_fista(
     return_err=False,
     line_search=True,
 ):
-    """Use the FISTA algorithm to solve the given optimisation problem
+    """Use the FISTA algorithm to solve the given optimisation problem:
+    
+        min_x ||Ax - b||^2 + reg * g(x)
+        
+    Optimization is acheived using the Fast Iterative Shrinkage Thresholding
+    Algorithm (FISTA) with backtracking, as described in Beck & Teboulle (2009), 
+    in combination with adaptive restart as described in O'Donoghue & Candès (2012).
     
     Parameters
     ----------
-    lhs : numpy.array
-    rhs : numpy.array
-    init : numpy.array
+    lhs : numpy.ndarray
+        The matrix A^T A. 
+    rhs : numpy.ndarray
+        The vector A^T b.
+    init : numpy.ndarray
+        Initialization of `x`.
     l1_reg : float
+        L1 regularization coefficient `reg`.
     prox : function
+        The proximal operator `g()`.
     n_iter : int, default is 10
+        Maximal number of iterations.
     tol : float, default is 1e-6
+        Convergence tolerance.
     return_err : bool, default is False
+        Return iteration errors if true.
     line_search : bool, default is True
+        Perform backtracking line search if True. 
     
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
+        The solution `x` that minimizes the given optimization problem.
     losses : list
+        If `return_err`=True, a list of iteration errors.
     """
     losses = [None] * n_iter
     # if provided data is all zeros, don't run fista, just return zero matrix
@@ -267,7 +324,9 @@ def minimise_fista(
         loss_new_x = compute_smooth_loss(new_x)
 
         # Adaptive restart criterion from Equation 12 in O’Donoghue & Candès (2012)
-        # Loss based restart criterion
+        # If the gradient+prox update without momentum points in the opposite 
+        # direction of the full update, then the momentum is likely to push the 
+        # estimate in the wrong direction, in which case we restart the momentum.
         if loss_new_x > loss_x:
             y = x
             smooth_grad_y = compute_smooth_grad(y)
@@ -336,26 +395,50 @@ def fista_solve(
     n_iter_max=100, 
     return_err=False
 ):
-    """Use the FISTA algorithm to solve the given optimisation problem
+    """Use the FISTA algorithm to define and solve the optimisation problem:
+    
+        min_x ||Ax - b||^2 + reg * g(x)
+    
+    Where `reg` is an l1 regularisation coefficient, and `g(x)` is a proximal 
+    operator applied to `x`. The proximal operator can optionally incorporate 
+    (individually or in combination): 
+        a) l1 regularization
+        b) non-negativity constraint
+        c) l2 norm constraint: ||x|| <= 1
+    L1 regularization and l2 norm constraint cannot be applied in combination.
+    
+    Optimization is acheived using the Fast Iterative Shrinkage Thresholding
+    Algorithm (FISTA) with backtracking, as described in Beck & Teboulle (2009), 
+    in combination with adaptive restart as described in O'Donoghue & Candès (2012).
     
     Parameters
     ----------
-    lhs : numpy.array
-    rhs : numpy.array
+    lhs : numpy.ndarray
+        The matrix A^T A. 
+    rhs : numpy.ndarray
+        The vector A^T b.
     l1_reg : float
+        L1 regularization coefficient `reg`.
     nonnegative : bool
+        If True, applies a non-negativity constraint to the solution `x`.
     normalize : bool
-    init : numpy.array
+        If True, applies an l2 norm constraint to `x` such that ||x|| <= 1.
+    init : numpy.ndarray
+        Initialization of `x`.
     n_iter_max : int, default is 100
+        Maximal number of iterations.
     return_err : bool, default is False
+        Return iteration errors if true.
     
     Returns
     -------
-    x : numpy.array
+    x : numpy.ndarray
+        The solution `x` that minimizes the given optimization problem.
     losses : list
+        If `return_err`=True, a list of iteration errors.
     """
     if normalize and l1_reg:
-        raise ValueError("Cannot normalize and apply l1 regularization on same mode.")
+        raise ValueError('Cannot normalize and apply l1 regularization on same mode.')
 
     if l1_reg and nonnegative:
         prox = nn_l1_prox
