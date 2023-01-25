@@ -34,6 +34,7 @@ def als_lasso(
     rank, 
     lambdas, 
     nonneg_modes=None, 
+    norm_constraint=True, 
     init='random', 
     tol=1e-6, 
     n_iter_max=1000,  
@@ -42,9 +43,7 @@ def als_lasso(
     verbose=0, 
     return_losses=False
 ):
-    """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
-    
-    Computes a rank-`rank` decomposition of `tensor` such that::
+    """Computes a rank-`rank` decomposition of `tensor` such that::
     
         tensor = [|weights; factors[0], ..., factors[-1]|].
         
@@ -55,8 +54,9 @@ def als_lasso(
             sparsity coefficients and the L1 norms of the factor matrices.
             
     Furthermore, the factor matrices indicated in `nonneg_modes` are forced
-    to be non-negative, and the L2 norm of any factor matrices without an L1
-    sparsity penalty (lambda=0.0) is constrained to be unit length.
+    to be non-negative, and if `norm_constraint`=True, the L2 norm of any 
+    factor matrix without an L1 sparsity penalty (lambda=0.0) is constrained to 
+    be unit length.
     
     Parameters
     ----------
@@ -71,6 +71,9 @@ def als_lasso(
         sparsity constraints.
     nonneg_modes : [int], default is None
         List of modes forced to be non-negative.
+    norm_constraint : bool, default is True
+        If `norm_constraint`=True, the L2 norm of any factor matrix without an 
+        L1 sparsity penalty (lambda=0.0) is constrained to unit length.
     init : {'random', CPTensor}, default is 'random'.
         Values used to initialized the factor matrices. If `init == 'random'` 
         then factor matrices are initialized with uniform distribution using 
@@ -86,9 +89,9 @@ def als_lasso(
             abs(loss[-2] - loss[-1]) / max(loss[-1], 1) < `tol`
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
-        according to the `tol` threshold set, an error will be raised.
+        according to the `tol` threshold set, a warning will be raised.
     random_state : {None, int, numpy.random.RandomState}, default is None
-        Used to initialized factor matrices and weights.
+        Random state used to initialized factor matrices and weights.
     threads : int, default is None
         Maximum number of threads allocated to the algorithm. If `threads`=None, 
         then all available threads will be used.
@@ -100,10 +103,10 @@ def als_lasso(
     Returns
     -------
     cp_tensor : (weight, factors)
-        * weights : 1D array of shape (rank,) that contains the weights of the
-            factors, in which the L2 norm has been normalized to unit lenght.
+        * weights : 1D array of shape (rank,) that contains the weights denoting
+            the relative contributio of each factor.
         * factors : List of factors of the CP decomposition where factor matrix 
-            `i` is of shape ``(tensor.shape[i], rank)``
+            `i` is of shape `(tensor.shape[i], rank)`
     losses : list
         A list of loss values calculated at each iteration of the algorithm. 
         Only returned when `return_losses` is set to True.
@@ -128,7 +131,13 @@ def als_lasso(
                 'is not equal to the number of modes in `tensor`.'
             )
         if any(lambdas < 0):
-            raise ValueError("L1 regularization must be nonnegative.")
+            raise ValueError('L1 sparsity penalty must be nonnegative.')
+        
+        # set normalization modes
+        if norm_constraint:
+            normalize = [True if lambdas[i] == 0 else False for i in range(n_modes)]
+        else:
+            normalize = [False for i in range(n_modes)]
             
         # initialize list to store losses
         losses = []
@@ -166,14 +175,6 @@ def als_lasso(
                 DtX = compute_mttkrp(tensor, factors, mode)
 
                 # generate new factor by solving lasso problem with MTTKRP
-                factors[mode] = fista_solve(
-                    lhs=DtD, 
-                    rhs=DtX.T,
-                    l1_reg=0.5*lambdas[mode],
-                    nonnegative=nonneg[mode], 
-                    normalize=lambdas[mode]==0,
-                    init=factors[mode].T
-                ).T
                 # fista_solve solves
                 #     min 0.5 ||DY - X||^2 + lambda ||Y||_1.
                 # We want to solve
@@ -184,21 +185,15 @@ def als_lasso(
                 # If we multiply the lambda by 0.5, then we (informally) get
                 #     min ||DY - X|| + 2 (0.5) lambda ||Y||_1 = min ||DY - X|| + lambda ||Y||_1
                 # which is what we want to solve.
+                factors[mode] = fista_solve(
+                    lhs=DtD, 
+                    rhs=DtX.T,
+                    l1_reg=0.5*lambdas[mode],
+                    nonnegative=nonneg[mode], 
+                    normalize=normalize[mode],
+                    init=factors[mode].T
+                ).T
                 
-                # # raise error if factor is zeroed out completely
-                # if tl.norm(factors[mode]) == 0.0:
-                #     # raise Exception('Mode {} factors zeroed out in iteration {}'.format(mode, iteration))
-                #     # warn the people of what has happened here
-                #     message = 'Mode {} factors zeroed out in iteration {}'.format(mode, iteration)
-                #     if verbose > 0:
-                #         print(message, flush=True)
-                #     warnings.warn(message)
-                #     # end iterations and return current result
-                #     if return_losses:
-                #         return tl.cp_tensor.CPTensor((None, factors)), losses
-                #     else:
-                #         return tl.cp_tensor.CPTensor((None, factors))
-
             # Compute loss using tensor reconstructed from latest factor updates
             # Faster version to compute the loss, uses the fact that
             # ||DY - X||^2 = Tr(Y^T D^TD X) - 2 Tr(X^T D^T B) + Tr(B^T B)
@@ -251,14 +246,73 @@ def als_lasso(
 
 
 class SparseCP(DecompositionMixin):
-    """Sparse Candecomp-Parafac decomposition.
+    """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
+    Computes a rank-`rank` decomposition of `tensor` such that::
+    
+        tensor = [|weights; factors[0], ..., factors[-1]|].
+        
+    The algorithm aims to minimize the loss as defined by::
+    
+        loss = `tl.norm(tensor - reconstruction, 2) ** 2 + penalties`
+            where `penalties` are calculated as the dot product of the `lambdas` 
+            sparsity coefficients and the L1 norms of the factor matrices.
+            
+    Furthermore, the factor matrices indicated in `nonneg_modes` are forced
+    to be non-negative, and if `norm_constraint`=True, the L2 norm of any 
+    factor matrix without an L1 sparsity penalty (lambda=0.0) is constrained to 
+    be unit length.
+    
+    Parameters
+    ----------
+    rank : int
+        Number of components.
+    lambdas : [float]
+        Vector of length tensor.ndim in which lambdas[i] is the l1 sparsity 
+        coefficient for factor[i]. If `lambdas` is set to all zeros, this is
+        the equivalent of fitting a standard CP decomposition without any
+        sparsity constraints.
+    nonneg_modes : [int], default is None
+        List of modes forced to be non-negative.
+    norm_constraint : bool, default is True
+        If `norm_constraint`=True, the L2 norm of any factor matrix without an 
+        L1 sparsity penalty (lambda=0.0) is constrained to unit length.
+    init : {'random', CPTensor}, default is 'random'.
+        Values used to initialized the factor matrices. If `init == 'random'` 
+        then factor matrices are initialized with uniform distribution using 
+        `random_state`. If init is a previously initialized `cp tensor`, any 
+        weights are incorporated into the last factor, and then the initial 
+        weight values for the output decomposition are set to '1'.
+    tol : float, default is 1e-6
+        Convergence tolerance. The algorithm is considered to have found the 
+        global minimum when the change in loss from one iteration 
+        to the next falls below the `tol` threshold. Note that the change in
+        loss calculation is relative when loss > 1 and absolute when loss <= 1. 
+        In other words, convergence is defined as:
+            abs(loss[-2] - loss[-1]) / max(loss[-1], 1) < `tol`
+    n_iter_max : int, default is 1000
+        Maximum number of iterations. If the algorithm fails to converge 
+        according to the `tol` threshold set, a warning will be raised.
+    random_state : {None, int, numpy.random.RandomState}, default is None
+        Random state used to initialized factor matrices and weights.
+    n_initializations : int, default is 1
+        Number of random initializations to compute.
+        
+    Returns
+    -------
+    SparseCP : 
+        * If not yet fit to data, a SparseCP object parameterized with sparse
+            cp decomposition model parameters.
+        * If fit to data, a SparseCP object containing `n_initializations` 
+            initialized and fit models, with the best fit initialization
+            accessible via the SparseCP.decomposition_ property.
     """
     def __init__(
         self, 
         rank, 
         lambdas, 
         nonneg_modes=None, 
+        norm_constraint=True, 
         init='random', 
         tol=1e-6, 
         n_iter_max=1000, 
@@ -269,6 +323,7 @@ class SparseCP(DecompositionMixin):
         self.rank = rank
         self.lambdas = lambdas
         self.nonneg_modes = nonneg_modes
+        self.norm_constraint = norm_constraint
         self.init = init
         self.tol = tol
         self.n_iter_max = n_iter_max
@@ -281,14 +336,14 @@ class SparseCP(DecompositionMixin):
     @property  
     def decomposition_(self):
         if self._best_cp_index is None:
-            raise AttributeError('The model has not been fit with data.')
+            raise AttributeError('The model has not yet been fit with data.')
         else:
             return self.candidates_[self._best_cp_index]
         
     @property  
     def loss_(self):
         if self._best_cp_index is None:
-            raise AttributeError('The model has not been fit with data.')
+            raise AttributeError('The model has not yet been fit with data.')
         else:
             return self.candidate_losses_[self._best_cp_index]
         
@@ -299,8 +354,34 @@ class SparseCP(DecompositionMixin):
         verbose=0, 
         return_losses=False
     ):
-        """Fit model to data
+        """Fits `n_initializations` sparse tensor decomposition models to the
+        provided data tensor, using the als_lasso() method. Fit models are
+        stored with the SparseCP object, and are accessible via the 
+        SparseCP.decomposition_(), SparseCP.loss_(), SparseCP.candidates_(), 
+        and SparseCP.candidate_losses_() properties.
         
+        Parameters
+        ----------
+        tensor : numpy.ndarray
+            Input data tensor.
+        threads : int, default is None
+            Maximum number of threads allocated to the algorithm. If 
+            `threads`=None, then all available threads will be used.
+        verbose : int, default is 0
+            Level of verbosity.
+        return_losses : bool, default is False
+            Activate return of iteration loss values at each iteration.
+            
+        Returns
+        -------
+        cp_tensor : (weight, factors)
+            * weights : 1D array of shape (rank,) that contains the weights 
+                denoting the relative contributio of each factor.
+            * factors : List of factors of the CP decomposition where factor 
+                matrix `i` is of shape `(tensor.shape[i], rank)`
+        losses : list
+            A list of loss values calculated at each iteration of the algorithm. 
+            Only returned when `return_losses` is set to True.
         """
         # initialize lists of candidate cp_tensors and their losses
         candidates = list()
@@ -323,6 +404,7 @@ class SparseCP(DecompositionMixin):
                 self.rank, 
                 self.lambdas, 
                 nonneg_modes=self.nonneg_modes, 
+                norm_constraint=self.norm_constraint, 
                 init=self.init, 
                 tol=self.tol, 
                 n_iter_max=self.n_iter_max, 
