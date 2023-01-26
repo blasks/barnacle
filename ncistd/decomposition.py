@@ -9,10 +9,24 @@ from tensorly.decomposition._cp import initialize_cp
 from threadpoolctl import threadpool_limits
 
 from .fista import fista_solve
+from .tensors import SparseCPTensor
 
 
 def _create_mttkrp_function(shape, rank):
-    """Helper function to generate the mttkrp computation function
+    """Helper function to generate the function for calculating the Matricized
+    Tensor Times Khatri-Rao Product (MTTKRP) using the opt_einsum package.
+    
+    Parameters
+    ----------
+    shape : [int, int, int]
+        List of 3 integers delineating the shape of the input tensor.
+    rank : int
+        Number of components in the CP tensor decomposition model.
+        
+    Returns
+    -------
+    mttkrp : function
+        MTTKRP function parameterized to the input tensor size and rank.
     """
     # define einsum paths for each skip mode
     mttkrp_paths = [
@@ -240,9 +254,9 @@ def als_lasso(
         
         # return result
         if return_losses:
-            return tl.cp_tensor.CPTensor((None, factors)), losses
+            return SparseCPTensor((None, factors)), losses
         else:
-            return tl.cp_tensor.CPTensor((None, factors))
+            return SparseCPTensor((None, factors))
 
 
 class SparseCP(DecompositionMixin):
