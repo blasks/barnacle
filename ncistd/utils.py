@@ -1,4 +1,3 @@
-"""The utils module contains tools for visualizing and manipulating tensors"""
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -9,20 +8,20 @@ from sklearn.metrics import jaccard_score
 from tensorly import check_random_state
 from tensorly.cp_tensor import CPTensor
 
-##########
-# Function to plot interactive visualization of 3d tensor
-##########
-def visualize_3d_tensor(tensor, 
-                        shell=True, 
-                        midpoint=None, 
-                        range_color=None, 
-                        opacity=0.5, 
-                        bg_color='#fff', 
-                        aspectmode='data',
-                        show_colorbar=True, 
-                        label_axes=True, 
-                        axes_names=None,
-                        figure_kwargs=None):
+
+def visualize_3d_tensor(
+    tensor, 
+    shell=True, 
+    midpoint=None, 
+    range_color=None, 
+    opacity=0.5, 
+    bg_color='#fff', 
+    aspectmode='data',
+    show_colorbar=True, 
+    label_axes=True, 
+    axes_names=None,
+    figure_kwargs=None
+):
     """Plot an interactive visualization of a 3d tensor using plotly
     
         This method uses the plotly.express.scatter_3d() function to plot a 
@@ -147,15 +146,15 @@ def visualize_3d_tensor(tensor,
     )
     return fig
 
-##########
-# Function to plot heatmap of factors
-##########
-def plot_factors_heatmap(factors, 
-                         ratios=False, 
-                         mask_thold=None, 
-                         reference_factors=None, 
-                         figsize=None, 
-                         heatmap_kwargs=None):
+
+def plot_factors_heatmap(
+    factors, 
+    ratios=False, 
+    mask_thold=None, 
+    reference_factors=None, 
+    figsize=None, 
+    heatmap_kwargs=None
+):
     """Plot a heatmap visualization of cp_tensor factors
     
     Parameters
@@ -241,11 +240,21 @@ def plot_factors_heatmap(factors,
             )
     return fig, ax
 
-##########
-# function for getting rid of zero factors
-##########
+
 def consolidate_cp(cp_tensor):
-    """Removes zeroed out factors from cp tensor"""
+    """Removes zeroed out factors from cp tensor.
+    
+    Parameters
+    ----------
+    cp_tensor : tensorly.cp_tensor.CPTensor
+        CP tensor decomposition.
+    
+    Returns
+    -------
+    cleaned_cp : tensorly.cp_tensor.CPTensor
+        CP tensor decomposition with zero factors removed. Rank of cleaned_cp
+        is less than or equal to rank of input cp_tensor.
+    """
     indexer = np.array(cp_tensor.weights != 0)
     for factor in cp_tensor.factors:
         indexer *= (np.linalg.norm(factor, axis=0) != 0)
@@ -253,123 +262,73 @@ def consolidate_cp(cp_tensor):
     for factor in cp_tensor.factors:
         cleaned_factors.append(factor.T[indexer].T)
     cleaned_weights = cp_tensor.weights[indexer]
-    return CPTensor((cleaned_weights, cleaned_factors))
+    cleaned_cp = CPTensor((cleaned_weights, cleaned_factors))
+    return cleaned_cp
 
-##########
-# function to generate tensorly CPTensor of all zeros
-##########
+
 def zeros_cp(shape, rank):
-    """Return tensorly.CPTensor of all zeros of the specified
-    size and rank.
+    """Return a tensorly.cp_tensor.CPTensor of the specified size and rank, 
+    consisting of all zeros.
+    
+    Parameters
+    ----------
+    shape : tuple of ints
+        Tensor shape where len(shape) = n modes in tensor.
+    rank : int
+        The number of components in the tensor. 
+    
+    Returns
+    -------
+    zero_cp : tensorly.cp_tensor.CPTensor
+        CPTensor of all zeros.
     """
     weights = tl.zeros(rank)
     factors = []
     for dim in shape:
         factors.append(tl.zeros([dim, rank]))
-    return(CPTensor((weights, factors)))
+    zero_cp = CPTensor((weights, factors))
+    return zero_cp
 
-##########
-# function to generate random folds
-##########
-def random_folds(shape, folds, random_state=None):
-    """Generates ``folds`` random masks in same shape as tensor. Each mask represents a nearly even
-    fraction of the input tensor (remainder distributed), without overlap. 
-    
-    Tests: 
-    # Full coverage even split
-    test = np.zeros(shape)
-    for i in range(folds):
-        test = np.logical_or(test, ~masks[i])
-    assert np.all(test)
-    
-    # No overlaps
-    test = np.zeros(shape)
-    for i in range(folds):
-        test = np.logical_and(test, ~masks[i])
-    assert not np.any(test)
-    """
-    # initialize random generator
-    rns = check_random_state(random_state)
-    size = np.product(shape)
-    assert folds <= size, "The value of ``folds`` cannot exceed the size of the array."
-    n = size // folds
-    remainder = size % folds
-    # delineate indices of even groups
-    indices = np.cumsum([0] + [n+1 if i < remainder else n for i in range(folds)])
-    mask = np.zeros(size, dtype=int)
-    # mark off groups in parent mask
-    for i in range(folds):
-        mask[indices[i]:indices[i+1]] = i
-    rns.shuffle(mask)
-    # reshape parent mask
-    mask = mask.reshape(shape)
-    # generate mask children from parent mask
-    masks = []
-    for i in range(folds):
-        masks.append(mask != i)
-    return masks
 
-##########
-# function to generate random mask
-##########
-def random_mask(tensor, fraction_masked=0.0, random_state=None, dtype=bool):
-    """Generate random mask in same shape as tensor. True indicates unmasked
-    data point and False indicates masked data point.
-    """
-    # initialize random generator
-    rns = check_random_state(random_state)
-    mask = np.ones(tensor.size, dtype=int)
-    n_masked = int(mask.size * fraction_masked)
-    mask[:n_masked] = 0
-    rns.shuffle(mask)
-    # reshape and cast as requested data type
-    mask = mask.reshape(tensor.shape).astype(dtype)
-    return mask
-
-##########
-# function to permute tensor
-##########
 def permute_tensor(tensor, mode, random_state=None):
+    """Function to independently permute each of the fibers of an input tensor
+    along a specified mode.
+    
+    Parameters
+    ----------
+    tensor : numpy.ndarray
+        Input tensor.
+    mode : int
+        Mode along which fibers will be permuted.
+    random_state : {None, int, numpy.random.RandomState}, default is None
+        Random state used to randomly permute tensor fibers.
+    
+    Returns
+    -------
+    tensor_out : numpy.ndarray
+        Randomly permuted tensor.
+    """
     rns = check_random_state(random_state)
     permuted_tensor = list()
     for fiber in tl.unfold(tensor, mode).T:
         permuted_tensor.append(rns.permutation(fiber))
-    return tl.fold(np.array(permuted_tensor).T, mode, tensor.shape) 
+    tensor_out = tl.fold(np.array(permuted_tensor).T, mode, tensor.shape)
+    return tensor_out
 
-##########
-# function to generate and store empirical distribution of eigenvalues across a particular mode
-##########
-def get_null_loadings(tensor, permutation_mode, n_permutations, decomposition_method, decomp_rank, 
-                      decomp_params=None, verbose=0, random_state=None):
-    # check random state
-    rns = check_random_state(random_state)
-    # instantiate null data tensor
-    null_weights = list()
-    null_factors = list()
-    # iterate through permutations
-    for i in range(n_permutations):
-        if verbose > 0:
-            print('Beginning permutation {} of {}'.format(i+1, n_permutations))
-        permuted_tensor = permute_tensor(tensor, permutation_mode, random_state=rns)
-        (weights, factors) = decomposition_method(permuted_tensor, rank=decomp_rank, 
-                                                  random_state=rns, verbose=verbose-1, 
-                                                  **decomp_params)
-        null_weights.append(weights[permutation_mode])
-        null_factors.append(factors[permutation_mode])
-    return np.array(null_factors).transpose(), np.array(null_weights)
 
-##########
-# function to derive clusters from null loadings
-##########
-def extract_significant_loadings(factor, null_loadings, quantile=0.05):
-    cluster = np.less(factor, np.quantile(null_loadings, quantile, axis=1))
-    cluster = cluster + np.greater(factor, np.quantile(null_loadings, 1-quantile, axis=1))
-    return cluster
-
-##########
-# functions evaluate cluster recovery (Saelens et al.)
-##########
 def jaccard_matrix(true_clusters, inferred_clusters):
+    """Description.
+    
+    Parameters
+    ----------
+    x : dtype
+        Description. 
+    
+    Returns
+    -------
+    x : dtype
+        Description.
+    """
     matrix = np.ndarray((len(true_clusters), len(inferred_clusters)))
     for i, true in enumerate(true_clusters):
         for j, inferred in enumerate(inferred_clusters):
@@ -377,12 +336,36 @@ def jaccard_matrix(true_clusters, inferred_clusters):
     return matrix
 
 def recovery_relevance(true_clusters, inferred_clusters):
+    """Description.
+    
+    Parameters
+    ----------
+    x : dtype
+        Description. 
+    
+    Returns
+    -------
+    x : dtype
+        Description.
+    """
     j_matrix = jaccard_matrix(true_clusters, inferred_clusters)
     recovery = j_matrix.max(axis=0).mean()
     relevance = j_matrix.max(axis=1).mean()
     return recovery, relevance
 
 def cluster_buddies_matrix(cluster_set):
+    """Description.
+    
+    Parameters
+    ----------
+    x : dtype
+        Description. 
+    
+    Returns
+    -------
+    x : dtype
+        Description.
+    """
     matrix = np.zeros((len(cluster_set[0]), len(cluster_set[0])))
     for cluster in cluster_set:
         matrix += np.outer(cluster, cluster)
@@ -391,6 +374,18 @@ def cluster_buddies_matrix(cluster_set):
     return matrix
 
 def pairs_precision_recall(true_clusters, inferred_clusters):
+    """Description.
+    
+    Parameters
+    ----------
+    x : dtype
+        Description. 
+    
+    Returns
+    -------
+    x : dtype
+        Description.
+    """
     true_matrix = cluster_buddies_matrix(true_clusters)
     inferred_matrix = cluster_buddies_matrix(inferred_clusters)
     min_matrix = np.min(np.stack([true_matrix, inferred_matrix]), axis=0)
