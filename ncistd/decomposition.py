@@ -262,20 +262,15 @@ def als_lasso(
 class SparseCP(DecompositionMixin):
     """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
-    Computes a rank-`rank` decomposition of `tensor` such that::
+    Parameterizes a rank-`rank` decomposition of `tensor` such that::
     
         tensor = [|weights; factors[0], ..., factors[-1]|].
-        
-    The algorithm aims to minimize the loss as defined by::
-    
-        loss = `tl.norm(tensor - reconstruction, 2) ** 2 + penalties`
-            where `penalties` are calculated as the dot product of the `lambdas` 
-            sparsity coefficients and the L1 norms of the factor matrices.
-            
-    Furthermore, the factor matrices indicated in `nonneg_modes` are forced
-    to be non-negative, and if `norm_constraint`=True, the L2 norm of any 
-    factor matrix without an L1 sparsity penalty (lambda=0.0) is constrained to 
-    be unit length.
+             
+    The `lambdas` values indicate the sparsity-inducing l1 regularization 
+    coefficient to be applied to each mode when the model is fit to data. The 
+    factor matrices indicated in `nonneg_modes` are forced to be non-negative, 
+    and if `norm_constraint`=True, the L2 norm of any factor matrix without an 
+    L1 sparsity penalty (lambda=0.0) is constrained to be unit length.
     
     Parameters
     ----------

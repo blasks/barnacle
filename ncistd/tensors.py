@@ -1,9 +1,7 @@
 import numpy as np
-import itertools
 import scipy.sparse as sparse
 import scipy.stats as stats
 from tensorly import check_random_state
-from tensorly.tenalg import outer
 from tensorly.cp_tensor import CPTensor
 
         
@@ -12,6 +10,8 @@ class Component(CPTensor):
     which it was derived.
     """
     def __init__(self, component):
+        if component.rank != 1:
+            raise ValueError('Component object must be a rank-1 CPTensor')
         super().__init__(component)
         
     def __repr__(self):
@@ -20,7 +20,23 @@ class Component(CPTensor):
     
     def indices(self, modes=None, tholds=(0, 0)):
         """Method that returns the indices of all elements less than
-        `tholds[0]` and greater than `tholds[1]`"""
+        `tholds[0]` and greater than `tholds[1]`
+                
+        Parameters
+        ----------
+        modes : list of ints, default is None
+            Modes of Component to extract indices from. If `modes=None`, all
+            Component modes will be included.
+        tholds : tuple of ints
+            Thresholds of values to be included in indices. Indices of values 
+            greater than or equal to `tholds[0]` and less than or equal to 
+            `tholds[1]` will not be included in output.
+        
+        Returns
+        -------
+        indices : list of numpy.ndarrays
+            Arrays of Component indices. One array for each mode.
+        """
         if modes is None:
             modes = [i for i in range(len(self.shape))]
         indices = []
@@ -32,7 +48,8 @@ class Component(CPTensor):
 
 
 class SparseCPTensor(CPTensor):
-    """Class container for sparse cp tensor methods"""
+    """Class container for methods related to sparse CP tensors.
+    """
     def __init__(self, cp_tensor):
         super().__init__(cp_tensor)
         
@@ -41,7 +58,14 @@ class SparseCPTensor(CPTensor):
         return message
     
     def get_components(self):
-        """Generate list of Component objects from model factors."""
+        """Generate list of Component objects from SparseCPTensor factors.
+        
+        Returns
+        -------
+        components : list of Components
+            List of Component objects, where components[i] is the i-th factor
+            of the parent SparseCPTensor.
+        """
         components = []
         for i in range(self.rank):
             factor_weights = [factor.T[i].T for factor in self.factors]
@@ -51,7 +75,8 @@ class SparseCPTensor(CPTensor):
         
 
 class SimSparseCPTensor(SparseCPTensor):
-    """Class container for simulated data models and methods"""
+    """Class container for methods related to simulated sparse CP tensors.
+    """
     def __init__(self, 
                  cp_tensor):
         super().__init__(cp_tensor)
@@ -68,6 +93,8 @@ class SimSparseCPTensor(SparseCPTensor):
         random_state=None
     ):
         """Generate optionally noisey data tensor from factorized CP tensor.
+        This method overwrites the tensorly.cp_tensor.CPTensor.to_tensor()
+        parent method.
         
         Parameters
         ----------
@@ -119,7 +146,7 @@ def simulated_sparse_tensor(
     Parameters
     ----------
     shape : tuple of ints
-        Tensor shape where len(shape) = n dimensions in tensor.
+        Tensor shape where len(shape) = n modes in tensor.
     rank : int
         The number of components in the tensor. 
     densities : list of floats [0.0, 1.0], optional
@@ -140,7 +167,7 @@ def simulated_sparse_tensor(
             
     Returns
     -------
-    tensor : SimSparseCPTensor
+    sim_cp : SimSparseCPTensor
         Parameterized simulated data.
     """
     rns = check_random_state(random_state)
@@ -162,4 +189,5 @@ def simulated_sparse_tensor(
             data_rvs=dist.rvs
         )
         factors.append(factor.A)
-    return SimSparseCPTensor((weights, factors))
+    sim_cp = SimSparseCPTensor((weights, factors))
+    return sim_cp

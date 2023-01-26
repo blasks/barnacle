@@ -335,6 +335,7 @@ def jaccard_matrix(true_clusters, inferred_clusters):
             matrix[i][j] = jaccard_score(true, inferred)
     return matrix
 
+
 def recovery_relevance(true_clusters, inferred_clusters):
     """Description.
     
@@ -352,6 +353,7 @@ def recovery_relevance(true_clusters, inferred_clusters):
     recovery = j_matrix.max(axis=0).mean()
     relevance = j_matrix.max(axis=1).mean()
     return recovery, relevance
+
 
 def cluster_buddies_matrix(cluster_set):
     """Description.
@@ -372,6 +374,7 @@ def cluster_buddies_matrix(cluster_set):
     # fill zero values with np.nan
     matrix[np.equal(matrix, 0)] = np.nan
     return matrix
+
 
 def pairs_precision_recall(true_clusters, inferred_clusters):
     """Description.
