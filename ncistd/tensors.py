@@ -10,40 +10,75 @@ class Component(CPTensor):
     which it was derived.
     """
     def __init__(self, component):
-        if component.rank != 1:
-            raise ValueError('Component object must be a rank-1 CPTensor')
         super().__init__(component)
+        if self.rank != 1:
+            raise ValueError('Component object must be a rank-1 CPTensor')
+        self.n_modes = len(self.shape)
         
     def __repr__(self):
         message = 'CPTensor component of shape {}'.format(self.shape)
         return message
     
-    def indices(self, modes=None, tholds=(0, 0)):
-        """Method that returns the indices of all elements less than
-        `tholds[0]` and greater than `tholds[1]`
+    def support(self, modes=None, boolean=False, thold=None):
+        """Method that returns the indices of all non-zero elements. Optionally, 
+        if a tuple of thresholds is provided, elements greater than `thold[0]` 
+        and less than `thold[1]` will be considered zero-valued.
                 
         Parameters
         ----------
-        modes : list of ints, default is None
-            Modes of Component to extract indices from. If `modes=None`, all
+        mode : int, list of ints, default is None
+            Mode(s) of Component to extract support from. If `modes=None`, all
             Component modes will be included.
-        tholds : tuple of ints
-            Thresholds of values to be included in indices. Indices of values 
-            greater than or equal to `tholds[0]` and less than or equal to 
-            `tholds[1]` will not be included in output.
+        boolean : bool, default is False
+            If True, returns non-zero indices of each mode as an array of 
+            booleans. Otherwise indices are returned as an array of ints. 
+        thold : tuple of ints, default is None
+            Thresholds of values to be considered zero-valued. Values 
+            greater than or equal to `thold[0]` and less than or equal to 
+            `thold[1]` will be considered zero-valued.
         
         Returns
         -------
-        indices : list of numpy.ndarrays
-            Arrays of Component indices. One array for each mode.
+        indices : numpy.ndarray or list of numpy.ndarrays
+            Arrays of Component indices. One array for each mode. If mode is an
+            int, just the index array of the corresponding mode is returned.
         """
+        # check modes parameter
         if modes is None:
-            modes = [i for i in range(len(self.shape))]
+            modes = [i for i in range(self.n_modes)]
+            single_mode = False
+        elif type(modes) is int:
+            if modes not in np.arange(self.n_modes):
+                raise ValueError('Mode not in range of tensor of shape {}'.format(self.shape))
+            modes = [modes]
+            single_mode = True
+        elif type(modes) is list:
+            for mode in modes:
+                if mode not in np.arange(self.n_modes):
+                    raise ValueError('Modes not in range of tensor of shape {}'.format(self.shape))
+            single_mode = False
+        else:
+            raise ValueError('Parameter `modes` must be an int or list of ints.')
+        # check thold parameter
+        if thold is None:
+            thold = (0, 0)
+        else:
+            if len(thold) != 2:
+                raise ValueError('Parameter `thold` must be a tuple (lower bound, upper bound).')
+            if thold[0] > thold[1]:
+                raise ValueError('The lower bound of `thold` is greater than the upper bound.')
+        # get support indices
         indices = []
-        for i, f in self.factors:
+        for i, f in enumerate(self.factors):
             if i in modes:
-                index = np.where(np.any([f < tholds[0], f > tholds[1]], axis=0))[0]
-                indices.append(index)
+                index = np.any([f < thold[0], f > thold[1]], axis=0)
+                if boolean:
+                    indices.append(index)
+                else:
+                    indices.append(np.where(index)[0])
+        # return results
+        if single_mode:
+            return indices[0]
         return indices
 
 
@@ -69,9 +104,46 @@ class SparseCPTensor(CPTensor):
         components = []
         for i in range(self.rank):
             factor_weights = [factor.T[i].T for factor in self.factors]
-            component_weight = self.weights[i]
-            components.append(Component(component_weight, factor_weights))
+            component_weight = np.array([self.weights[i]])
+            components.append(Component((component_weight, factor_weights)))
         return components
+    
+    def get_clusters(self, mode, boolean=False, thold=None):
+        """Each component of a factor matrix resulting from a sparse tensor 
+        decomposition can be considered as a cluster, where the support (indices 
+        of non-zero values) delineates cluster membership. This method extracts 
+        a list of indices, one for each component, delineating cluster 
+        memberships indicated by the factor matrix in one mode of the 
+        decomposition. Indices can either be an array of integers, or a boolean 
+        array spanning the length of the mode. 
+        
+        Parameters
+        ----------
+        mode : int
+            Mode to get clusters from. 
+        boolean : bool, default is False
+            If True, returns non-zero indices of each mode as an array of 
+            booleans. Otherwise indices are returned as an array of ints. 
+        thold : tuple of ints, default is None
+            Thresholds of values to be considered zero-valued. Values 
+            greater than or equal to `thold[0]` and less than or equal to 
+            `thold[1]` will be considered zero-valued.
+        
+        Returns
+        -------
+        clusters : list of numpy.ndarrays
+            List of cluster indices of the selected mode.
+        """
+        clusters = []
+        components = self.get_components()
+        for component in components:
+            cluster = component.support(
+                modes=mode, 
+                boolean=boolean, 
+                thold=thold
+            )
+            clusters.append(cluster)
+        return clusters
         
 
 class SimSparseCPTensor(SparseCPTensor):
