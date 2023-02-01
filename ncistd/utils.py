@@ -317,17 +317,28 @@ def permute_tensor(tensor, mode, random_state=None):
 
 
 def jaccard_matrix(true_clusters, inferred_clusters):
-    """Description.
+    """Generates an n x m matrix where n is the number of true_clusters and m 
+    is the number of inferred_clusters, and where each entry matrix[i][j] is
+    the jaccard score comparing true_clusters[i] with inferred_clusters[j]. 
+    
+    Note that the length of the boolean array indicating cluster membership 
+    should be the same for each cluster.
     
     Parameters
     ----------
-    x : dtype
-        Description. 
+    true_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        ground truth clusters. 
+    inferred_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        clusters to be compared against ground truth.
     
     Returns
     -------
-    x : dtype
-        Description.
+    matrix : numpy.ndarray
+        An n x m matrix where n is the number of true_clusters and m is the
+        number of inferred_clusters, and where each entry matrix[i][j] is
+        the jaccard score comparing true_clusters[i] with inferred_clusters[j].
     """
     matrix = np.ndarray((len(true_clusters), len(inferred_clusters)))
     for i, true in enumerate(true_clusters):
@@ -337,17 +348,35 @@ def jaccard_matrix(true_clusters, inferred_clusters):
 
 
 def recovery_relevance(true_clusters, inferred_clusters):
-    """Description.
+    """Evaluates two metrics, recovery and relevance, designed to compare a 
+    set of `inferred_clusters` against a ground truth set of `true_clusters`. 
+    Recovery measures how well the true clusters are recovered by the inferred 
+    clusters, and is the mean of the Jaccard indices of the best match from the
+    `inferred_clusters` for each of the `true_clusters`. Relevance measures 
+    how well the inferred clusters are representative of the true clusters, and
+    is the mean of the Jaccard indices of the best match from the 
+    `true_clusters` for each of the `inferred_clusters`. Both metrics range 
+    between 0 and 1. 
+    
+    For a complete description, see Methods section and Supplementary Figure 1
+    of Saelens et al. (2018).
     
     Parameters
     ----------
-    x : dtype
-        Description. 
+    true_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        ground truth clusters. Each array should be the same length.
+    inferred_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        clusters to be compared against ground truth. Each array should be the 
+        same length.
     
     Returns
     -------
-    x : dtype
-        Description.
+    recovery : float
+        Recovery score (ranges between 0 and 1).
+    relevance : float
+        Relevance score (ranges between 0 and 1).
     """
     j_matrix = jaccard_matrix(true_clusters, inferred_clusters)
     recovery = j_matrix.max(axis=0).mean()
@@ -356,17 +385,25 @@ def recovery_relevance(true_clusters, inferred_clusters):
 
 
 def cluster_buddies_matrix(cluster_set):
-    """Description.
+    """Generates a square matrix of size n x n where n is the length of the 
+    boolean array indicating membership in each cluster. Note that this length
+    should be the same for each cluster included in cluster_set. Each entry
+    matrix[i][j] is the number of times that element i and element j co-occur
+    in the same cluster (i.e. the number of times index i and index j are both
+    True in the same cluster).
     
     Parameters
     ----------
-    x : dtype
-        Description. 
+    cluster_set : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each cluster
+        included in the set. 
     
     Returns
     -------
-    x : dtype
-        Description.
+    matrix : numpy.ndarray
+        An n x n array of integers in which each entry matrix[i][j] is the
+        number of times element i and element j co-occur in a cluster included
+        in the `cluster_set`.
     """
     matrix = np.zeros((len(cluster_set[0]), len(cluster_set[0])))
     for cluster in cluster_set:
@@ -377,27 +414,54 @@ def cluster_buddies_matrix(cluster_set):
 
 
 def pairs_precision_recall(true_clusters, inferred_clusters):
-    """Description.
+    """Evaluates two metrics, precision and recall, designed to compare pairwise
+    membership of the elements included in a set of `inferred_clusters` against 
+    the pairwise membership of elements in a ground truth set of `true_clusters`. 
+    To evaluate, the number of times each pair of elements (e.g. cluster[0] and 
+    cluster[1]) co-occurs is counted in both the set of `true_clusters` as well
+    as the set of `inferred_clusters`. Precision measures the proportion of 
+    pairwise co-occurrences in the `inferred_clusters` that are also found in 
+    the `true_clusters`. Recall measures the proportion of pairwise 
+    co-occurences in the `true_clusters` that are reproduced in the 
+    `inferred_clusters`. Both metrics range between 0 and 1.
+    
+    For a complete description, see Methods section and Supplementary Figure 1
+    of Saelens et al. (2018).
     
     Parameters
     ----------
-    x : dtype
-        Description. 
+    true_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        ground truth clusters. Each array should be the same length.
+    inferred_clusters : list of boolean numpy.ndarrays
+        List of boolean arrays indicating cluster membership for each of the
+        clusters to be compared against ground truth. Each array should be the 
+        same length.
     
     Returns
     -------
-    x : dtype
-        Description.
+    precision : float
+        Precision score (ranges between 0 and 1).
+    recall : float
+        Recall score (ranges between 0 and 1).
     """
     true_matrix = cluster_buddies_matrix(true_clusters)
     inferred_matrix = cluster_buddies_matrix(inferred_clusters)
     min_matrix = np.min(np.stack([true_matrix, inferred_matrix]), axis=0)
     # fill nan values with zeros in min matrix
     min_matrix[np.isnan(min_matrix)] = 0.0
+    # get index of lower triangle of matrices
+    index = np.tril_indices(len(min_matrix), k=-1)
     # calculate precicion
-    precision_values = (min_matrix / inferred_matrix)[np.tril_indices(60, k=-1)]
-    precision = precision_values[~np.isnan(precision_values)].mean()
+    precision_values = (min_matrix / inferred_matrix)[index]
+    if np.all(np.isnan(precision_values)):
+        precision = 0.0
+    else:
+        precision = precision_values[~np.isnan(precision_values)].mean()
     # calculate recall
-    recall_values = (min_matrix / true_matrix)[np.tril_indices(60, k=-1)]
-    recall = recall_values[~np.isnan(recall_values)].mean()
+    recall_values = (min_matrix / true_matrix)[index]
+    if np.all(np.isnan(recall_values)):
+        recall = 0.0
+    else:
+        recall = recall_values[~np.isnan(recall_values)].mean()
     return precision, recall
