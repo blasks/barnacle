@@ -15,17 +15,17 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
-tensorly = "^0.7.0"
-numpy = "^1.23.1"
+python = ">=3.9 <3.12"
+tensorly = "^0.8.0"
+numpy = "^1.24.2"
 opt-einsum = "^3.3.0"
 threadpoolctl = "^3.1.0"
-scikit-learn = "^1.1.1"
-seaborn = "^0.11.2"
+scikit-learn = "^1.2.1"
+seaborn = "^0.12.2"
 scipy = "^1.9.0"
-plotly = "^5.9.0"
-matplotlib = "^3.5.2"
-tensorly-viz = "^0.1.4"
+plotly = "^5.13.1"
+matplotlib = "^3.7.0"
+tensorly-viz = "^0.1.7"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
