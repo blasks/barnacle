@@ -294,7 +294,7 @@ def minimise_fista(
     if line_search:
         lipschitz = np.trace(lhs) / (2 * lhs.shape[0])  # Lower bound for lipschitz
     else:
-        lipschitz = np.trace(lhs)  # Lower bound for lipschitz
+        lipschitz = np.trace(lhs)  # Upper bound for lipschitz
 
     AtA = lhs
     At_b = rhs
@@ -323,10 +323,9 @@ def minimise_fista(
         )
         loss_new_x = compute_smooth_loss(new_x)
 
-        # Adaptive restart criterion from Equation 12 in O’Donoghue & Candès (2012)
-        # If the gradient+prox update without momentum points in the opposite 
-        # direction of the full update, then the momentum is likely to push the 
-        # estimate in the wrong direction, in which case we restart the momentum.
+        # Adaptive restart criterion from Equation 12 in O’Donoghue & Candès (2012). If
+        # the loss is not decreasing monotonically, then the momentum is likely to push
+        # the estimate in the wrong direction, in which case we restart the momentum.
         if loss_new_x > loss_x:
             y = x
             smooth_grad_y = compute_smooth_grad(y)
@@ -343,7 +342,11 @@ def minimise_fista(
             loss_new_x = compute_smooth_loss(new_x)
 
         # Backtracking line search
-        for line_search_it in range(5):
+        # We backtrack at most five times, since the backtracking line search
+        # may diverge for infeasible initial positions. After a few FISTA iterations,
+        # we will have an actual upper bound for the Lipschitz constant since the
+        # line search increases the Lipschitz estimate exponentially.
+        for _line_search_it in range(5):
             if (
                 not _should_continue_backtracking(
                     new_x, y, loss_new_x, loss_y, smooth_grad_y, lipschitz
