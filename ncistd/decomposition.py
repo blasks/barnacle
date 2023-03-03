@@ -1,9 +1,12 @@
+import multiprocessing as mp
+import numbers
+import signal
+import time
 import warnings
 
 import numpy as np
 import opt_einsum as oe
 import tensorly as tl
-from tensorly import check_random_state
 from tensorly.decomposition._base_decomposition import DecompositionMixin
 from tensorly.decomposition._cp import initialize_cp
 from threadpoolctl import threadpool_limits
@@ -360,6 +363,8 @@ class SparseCP(DecompositionMixin):
         self, 
         tensor, 
         threads=None, 
+        initialization_processes=1, 
+        shutdown_event=None, 
         verbose=0, 
         return_losses=False
     ):
@@ -376,6 +381,11 @@ class SparseCP(DecompositionMixin):
         threads : int, default is None
             Maximum number of threads allocated to the algorithm. If 
             `threads`=None, then all available threads will be used.
+        initialization_processes : int, default is 1
+            Number of initializations to run in parallel procesess.
+        shutdown_event : multiprocessing.managers.EventProxy, default is None
+            Event which can be set to gracefully shut down the
+            multiprocessing.Pool of parallel initialization worker processes.
         verbose : int, default is 0
             Level of verbosity.
         return_losses : bool, default is False
@@ -392,6 +402,9 @@ class SparseCP(DecompositionMixin):
             A list of loss values calculated at each iteration of the algorithm. 
             Only returned when `return_losses` is set to True.
         """
+        if (shutdown_event is not None) and not isinstance(shutdown_event, mp.managers.EventProxy):
+            raise TypeError("shutdown_event must be None or a multiprocessing.managers.EventProxy")
+
         # initialize lists of candidate cp_tensors and their losses
         candidates = list()
         candidate_losses = list()
@@ -399,37 +412,71 @@ class SparseCP(DecompositionMixin):
         # initialize lowest error
         lowest_err = float('inf')
         
-        # initialize random state
-        rns = check_random_state(self.random_state)
-        
-        # run multiple initializations
+        initialization_processes = min(self.n_initializations, initialization_processes)
+
+        # set up random state for multiple initializations
+        if isinstance(self.random_state, numbers.Integral):
+            seed = self.random_state
+        elif isinstance(self.random_state, np.random.RandomState):
+            seed = int(self.random_state.randint(0, 2**32-1))
+        else:
+            seed = None
+        ss = np.random.SeedSequence(seed)
+        child_seeds = ss.spawn(self.n_initializations)
+        child_seed_ints = [np.random.default_rng(rs).integers(0, 2**32-1, 1)[0] for rs in child_seeds]
+        # configure args for multiple initializations
+        args = []
         for i in range(self.n_initializations):
-            if verbose > 0:
-                print('\nBeginning initialization {} of {}'.format(
-                    i+1, self.n_initializations))
-            # fit model
-            cp, loss = als_lasso(
-                tensor, 
-                self.rank, 
-                self.lambdas, 
-                nonneg_modes=self.nonneg_modes, 
-                norm_constraint=self.norm_constraint, 
-                init=self.init, 
-                tol=self.tol, 
-                n_iter_max=self.n_iter_max, 
-                random_state=rns, 
-                threads=threads, 
-                verbose=verbose - 1, 
-                return_losses=True
-            )
-            # store candidates
-            candidates.append(cp)
-            candidate_losses.append(loss)
-            # keep best fit
+            args.append({
+                "i": i,
+                "total_inits": self.n_initializations,
+                "als_lasso_kwargs": {
+                    'tensor': tensor,
+                    'rank': self.rank,
+                    'lambdas': self.lambdas,
+                    'nonneg_modes': self.nonneg_modes,
+                    'norm_constraint': self.norm_constraint,
+                    'init': self.init,
+                    'tol': self.tol,
+                    'n_iter_max': self.n_iter_max,
+                    'threads': threads,
+                    'verbose': verbose - 1,
+                    'return_losses': True,
+                    'random_state': child_seed_ints[i]
+                }
+            })
+
+        def shutdown():
+            return (shutdown_event is not None) and shutdown_event.is_set()
+
+        # run multiple initializations
+        results = {}
+        if initialization_processes > 1:
+            if not shutdown():
+                with mp.get_context("spawn").Pool(processes=initialization_processes, initializer=init_worker) as pool:
+                    futures = [pool.apply_async(_als_lasso_job_runner, (a,)) for a in args]
+                    while not shutdown() and len(results) < len(futures):
+                        for i, fut in enumerate(futures):
+                            if (i not in results) and fut.ready():
+                                results[i] = fut.get()
+                        time.sleep(0.1)
+                    # If any workers are still running (shutdown() == True), leaving
+                    # the context manager here will stop them with SIGTERM
+            if shutdown():
+                return None
+        else:
+            # no need for process pool
+            results = {i: r for (i, r) in enumerate(map(_als_lasso_job_runner, args))}
+
+        for i in sorted(results.keys()):
+            candidates.append(results[i][0])
+            candidate_losses.append(results[i][1])
+        # keep best fit
+        for i, loss in enumerate(candidate_losses):
             if loss[-1] < lowest_err:
                 lowest_err = loss[-1]
                 best_cp_index = i
-        
+
         # store results
         self.candidates_ = candidates
         self.candidate_losses_ = candidate_losses
@@ -440,4 +487,25 @@ class SparseCP(DecompositionMixin):
             return candidates[best_cp_index], candidate_losses[best_cp_index]
         else:
             return candidates[best_cp_index]
-    
+
+
+def _als_lasso_job_runner(kwargs):
+    i = kwargs["i"]
+    n = kwargs["total_inits"]
+    als_lasso_kwargs = kwargs["als_lasso_kwargs"]
+    if als_lasso_kwargs['verbose'] > 0:
+        print(
+            'Beginning initialization %d of %d (random_state=%s)' % 
+            (i+1, n, als_lasso_kwargs["random_state"]), flush=True)
+    t0 = time.perf_counter()
+    results = als_lasso(**als_lasso_kwargs)
+    elapsed_s = time.perf_counter() - t0
+    if als_lasso_kwargs['verbose'] > 0:
+        print('Completed initialization %d of %d in %s seconds' % (i+1, n, elapsed_s), flush=True)
+    return results
+
+
+def init_worker():
+    # Make sure workers have default SIGINT and SIGTERM handlers
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    signal.signal(signal.SIGTERM, signal.SIG_DFL)
