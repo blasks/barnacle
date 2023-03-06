@@ -103,7 +103,7 @@ class SparseCPTensor(CPTensor):
         """
         components = []
         for i in range(self.rank):
-            factor_weights = [factor.T[i].T for factor in self.factors]
+            factor_weights = [factor.T[i].reshape((-1, 1)) for factor in self.factors]
             component_weight = np.array([self.weights[i]])
             components.append(Component((component_weight, factor_weights)))
         return components
