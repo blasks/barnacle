@@ -95,7 +95,6 @@ def test_als_lasso(
         n_iter_max=n_iter_max,  
         random_state=rns, 
         threads=None, 
-        verbose=0, 
         return_losses=True
     )
     
@@ -180,7 +179,6 @@ def test_als_lasso_random_seed(
         n_iter_max=n_iter_max,  
         random_state=seed, 
         threads=None, 
-        verbose=0, 
         return_losses=True
     )
     # check that same random seeding yeilds same results
@@ -198,7 +196,6 @@ def test_als_lasso_random_seed(
         n_iter_max=n_iter_max,  
         random_state=seed, 
         threads=None, 
-        verbose=0, 
         return_losses=True
     )
     assert_array_equal(loss, second_loss)
@@ -235,7 +232,6 @@ def test_als_lasso_solutions(
         n_iter_max=n_iter_max,  
         random_state=seed, 
         threads=None, 
-        verbose=0, 
         return_losses=True
     )
     # target solution metrics

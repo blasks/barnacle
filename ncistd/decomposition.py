@@ -1,8 +1,8 @@
+import logging
 import multiprocessing as mp
 import numbers
 import signal
 import time
-import warnings
 
 import numpy as np
 import opt_einsum as oe
@@ -14,6 +14,7 @@ from threadpoolctl import threadpool_limits
 from .fista import fista_solve
 from .tensors import SparseCPTensor
 
+logger = logging.getLogger(__name__)
 
 def _create_mttkrp_function(shape, rank):
     """Helper function to generate the function for calculating the Matricized
@@ -57,7 +58,6 @@ def als_lasso(
     n_iter_max=1000,  
     random_state=None, 
     threads=None, 
-    verbose=0, 
     return_losses=False
 ):
     """Computes a rank-`rank` decomposition of `tensor` such that::
@@ -112,8 +112,6 @@ def als_lasso(
     threads : int, default is None
         Maximum number of threads allocated to the algorithm. If `threads`=None, 
         then all available threads will be used.
-    verbose : int, default is 0
-        Level of verbosity.
     return_losses : bool, default is False
         Activate return of iteration loss values at each iteration.
         
@@ -175,13 +173,11 @@ def als_lasso(
         
         # begin iterations
         for iteration in range(n_iter_max):
-            if verbose > 2:
-                print('\nStarting iteration {}'.format(iteration), flush=True)
+            logger.debug('Starting iteration %s', iteration)
                 
             # loop through modes
             for mode in range(n_modes):
-                if verbose > 3:
-                    print('\tMode {} of {}'.format(mode, n_modes), flush=True)
+                logger.debug('\tMode %s of %s', mode, n_modes)
 
                 # form DtD, containing kr_product.T @ kr_product
                 DtD = np.ones((rank, rank))
@@ -228,14 +224,11 @@ def als_lasso(
             loss = sse + penalties
             # append loss to history
             losses.append(loss)
-            if verbose > 1:
-                print('loss: {}'.format(losses[-1]), flush=True)
+            logger.debug('loss: %s', losses[-1])
             
             # stop iterations if loss has acheived zero 
             if loss == 0.0:
-                if verbose > 0:
-                    message = 'Algorithm converged after {} iterations'.format(iteration+1)
-                    print(message, flush=True)
+                logger.info('Algorithm converged after %s iterations', iteration+1)
                 break
             
             # check convergence
@@ -244,16 +237,11 @@ def als_lasso(
                 loss_change = abs(losses[-2] - losses[-1]) / max(losses[-1], 1)
                 # compare change in loss to tolerance
                 if loss_change < tol:
-                    if verbose > 0:
-                        message = 'Algorithm converged after {} iterations'.format(iteration+1)
-                        print(message, flush=True)
+                    logger.info('Algorithm converged after %s iterations', iteration+1)
                     break
                 # close out with warnings if the iteration maximum has been reached
                 elif iteration == n_iter_max - 1:
-                    message = 'Algorithm failed to converge after {} iterations'.format(iteration+1)
-                    if verbose > 0:
-                        print(message, flush=True)
-                    warnings.warn(message)
+                    logger.warning('Algorithm failed to converge after %s iterations', iteration+1)
         
         # return result
         if return_losses:
@@ -365,7 +353,6 @@ class SparseCP(DecompositionMixin):
         threads=None, 
         initialization_processes=1, 
         shutdown_event=None, 
-        verbose=0, 
         return_losses=False
     ):
         """Fits `n_initializations` sparse tensor decomposition models to the
@@ -386,8 +373,6 @@ class SparseCP(DecompositionMixin):
         shutdown_event : multiprocessing.managers.EventProxy, default is None
             Event which can be set to gracefully shut down the
             multiprocessing.Pool of parallel initialization worker processes.
-        verbose : int, default is 0
-            Level of verbosity.
         return_losses : bool, default is False
             Activate return of iteration loss values at each iteration.
             
@@ -440,7 +425,6 @@ class SparseCP(DecompositionMixin):
                     'tol': self.tol,
                     'n_iter_max': self.n_iter_max,
                     'threads': threads,
-                    'verbose': verbose - 1,
                     'return_losses': True,
                     'random_state': child_seed_ints[i]
                 }
@@ -493,15 +477,13 @@ def _als_lasso_job_runner(kwargs):
     i = kwargs["i"]
     n = kwargs["total_inits"]
     als_lasso_kwargs = kwargs["als_lasso_kwargs"]
-    if als_lasso_kwargs['verbose'] > 0:
-        print(
-            'Beginning initialization %d of %d (random_state=%s)' % 
-            (i+1, n, als_lasso_kwargs["random_state"]), flush=True)
+    logger.info('Beginning initialization %s of %s (random_state=%s)',
+        i+1, n, als_lasso_kwargs["random_state"])
     t0 = time.perf_counter()
     results = als_lasso(**als_lasso_kwargs)
     elapsed_s = time.perf_counter() - t0
-    if als_lasso_kwargs['verbose'] > 0:
-        print('Completed initialization %d of %d in %s seconds' % (i+1, n, elapsed_s), flush=True)
+    logger.info('Completed initialization %d of %d in %s seconds',
+        i+1, n, elapsed_s)
     return results
 
 
