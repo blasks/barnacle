@@ -1,7 +1,6 @@
 import logging
 import multiprocessing as mp
 import numbers
-import signal
 import time
 
 import numpy as np
@@ -400,15 +399,20 @@ class SparseCP(DecompositionMixin):
         initialization_processes = min(self.n_initializations, initialization_processes)
 
         # set up random state for multiple initializations
-        if isinstance(self.random_state, numbers.Integral):
-            seed = self.random_state
-        elif isinstance(self.random_state, np.random.RandomState):
-            seed = int(self.random_state.randint(0, 2**32-1))
+        child_seeds = []
+        if self.random_state is None:
+            child_seeds = [None] * self.n_initializations
         else:
-            seed = None
-        ss = np.random.SeedSequence(seed)
-        child_seeds = ss.spawn(self.n_initializations)
-        child_seed_ints = [np.random.default_rng(rs).integers(0, 2**32-1, 1)[0] for rs in child_seeds]
+            if isinstance(self.random_state, numbers.Integral):
+                seed = self.random_state
+            elif isinstance(self.random_state, np.random.RandomState):
+                seed = self.random_state.randint(0, 2**32-1)
+            else:
+                raise TypeError('incorrect random_state type')
+            for i in range(self.n_initializations):
+                # manage uint32 overflow
+                child_seeds.append(int(np.array(seed + i).astype(np.uint32)))
+
         # configure args for multiple initializations
         args = []
         for i in range(self.n_initializations):
@@ -426,7 +430,7 @@ class SparseCP(DecompositionMixin):
                     'n_iter_max': self.n_iter_max,
                     'threads': threads,
                     'return_losses': True,
-                    'random_state': child_seed_ints[i]
+                    'random_state': child_seeds[i]
                 }
             })
 
@@ -437,7 +441,7 @@ class SparseCP(DecompositionMixin):
         results = {}
         if initialization_processes > 1:
             if not shutdown():
-                with mp.get_context("spawn").Pool(processes=initialization_processes, initializer=init_worker) as pool:
+                with mp.get_context("spawn").Pool(processes=initialization_processes) as pool:
                     futures = [pool.apply_async(_als_lasso_job_runner, (a,)) for a in args]
                     while not shutdown() and len(results) < len(futures):
                         for i, fut in enumerate(futures):
@@ -485,9 +489,3 @@ def _als_lasso_job_runner(kwargs):
     logger.info('Completed initialization %d of %d in %s seconds',
         i+1, n, elapsed_s)
     return results
-
-
-def init_worker():
-    # Make sure workers have default SIGINT and SIGTERM handlers
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
-    signal.signal(signal.SIGTERM, signal.SIG_DFL)
