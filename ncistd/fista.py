@@ -445,14 +445,14 @@ def fista_solve(
 
     if l1_reg and nonnegative:
         prox = nn_l1_prox
-    elif l1_reg:
-        prox = l1_prox
     elif nonnegative and normalize:
         prox = nn_l2ball_prox
     elif nonnegative:
         prox = nn_prox
     elif normalize:
         prox = l2ball_prox
+    else:
+        prox = l1_prox
 
     return minimise_fista(
         lhs, rhs, init, l1_reg, prox, n_iter=n_iter_max, tol=1e-6, return_err=return_err

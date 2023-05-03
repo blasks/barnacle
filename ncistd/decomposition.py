@@ -87,7 +87,9 @@ def als_lasso(
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
         If `norm_constraint`=True, the L2 norm of any factor matrix without an 
-        L1 sparsity penalty (lambda=0.0) is constrained to unit length.
+        L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
+        sparsity penalty of every mode is 0.0, the L2 norm constraint is 
+        automatically turned off in every mode.
     init : {'random', CPTensor}, default is 'random'.
         Values used to initialized the factor matrices. If `init == 'random'` 
         then factor matrices are initialized with uniform distribution using 
@@ -148,10 +150,10 @@ def als_lasso(
             raise ValueError('L1 sparsity penalty must be nonnegative.')
         
         # set normalization modes
-        if norm_constraint:
-            normalize = [True if lambdas[i] == 0 else False for i in range(n_modes)]
-        else:
+        if not norm_constraint or not np.any(lambdas):
             normalize = [False for i in range(n_modes)]
+        else:
+            normalize = [True if lambdas[i] == 0 else False for i in range(n_modes)]
             
         # initialize list to store losses
         losses = []
@@ -285,7 +287,9 @@ class SparseCP(DecompositionMixin):
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
         If `norm_constraint`=True, the L2 norm of any factor matrix without an 
-        L1 sparsity penalty (lambda=0.0) is constrained to unit length.
+        L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
+        sparsity penalty of every mode is 0.0, the L2 norm constraint is 
+        automatically turned off in every mode.
     init : {'random', CPTensor}, default is 'random'.
         Values used to initialized the factor matrices. If `init == 'random'` 
         then factor matrices are initialized with uniform distribution using 
