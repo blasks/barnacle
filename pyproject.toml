@@ -1,17 +1,17 @@
 [tool.poetry]
-name = "ncistd"
+name = "barnacle"
 version = "0.1.0"
-description = "Python package for developing clustering methods that work for tensor structured data"
+description = "unsupervised clustering analysis via sparse tensor decomposition"
 authors = ["Stephen Blaskowski <stephen.blaskowski@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/blasks/ncistd"
+repository = "https://github.com/blasks/barnacle"
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent"
 ]
 packages = [
-    { include = "ncistd" },
+    { include = "barnacle" },
 ]
 
 [tool.poetry.dependencies]
