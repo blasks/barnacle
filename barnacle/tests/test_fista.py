@@ -1,5 +1,5 @@
 from pytest import fixture
-import ncistd.fista as fista
+import barnacle.fista as fista
 import pytest
 import numpy as np
 from scipy.optimize import check_grad

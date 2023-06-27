@@ -4,5 +4,5 @@
 # and save the image to a tarball 
 
 # make and save docker image
-docker image build --tag ncistd .
-docker save ncistd | gzip > ncistd.tar.gz
+docker image build --tag barnacle .
+docker save barnacle | gzip > barnacle.tar.gz

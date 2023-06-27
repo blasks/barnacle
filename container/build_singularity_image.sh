@@ -5,4 +5,4 @@
 
 
 # build singularity image from tarball
-singularity build ncistd.sif docker-archive://ncistd.tar.gz
+singularity build barnacle.sif docker-archive://barnacle.tar.gz

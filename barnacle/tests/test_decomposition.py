@@ -1,4 +1,4 @@
-from ncistd import (
+from barnacle import (
     simulated_sparse_tensor, 
     als_lasso,
     consolidate_cp
