@@ -290,6 +290,30 @@ def zeros_cp(shape, rank):
     return zero_cp
 
 
+def subset_cp_tensor(cp_tensor, subset_indices):
+    """Selects subset of cp_tensor based on provided indices
+    
+    Parameters
+    ----------
+    cp_tensor : tensorly.CPTensor
+        CPTensor object with (weights, factors).
+    subset_indices : dict(int: index-like)
+        Dictionary with mode as key and value an integer index of 
+        the positions to be downselected from `cp_tensor`.
+        Example: {1: [0, 1, 3, 4, 5, 8]}
+        
+    Returns
+    -------
+    subset_cp : tensorly.CPTensor
+        Subset CPTensor.
+    """
+    weights, factors = cp_tensor
+    new_factors = factors.copy()
+    for mode, index in subset_indices.items():
+        new_factors[mode] = factors[mode][index]
+    return(CPTensor((weights, new_factors)))
+
+
 def permute_tensor(tensor, mode, random_state=None):
     """Function to independently permute each of the fibers of an input tensor
     along a specified mode.
