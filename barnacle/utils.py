@@ -49,6 +49,7 @@ def visualize_3d_tensor(
             'data' : axes are in proportion to the data ranges
             'cube' : axes are drawn as a cube, regardless of data ranges
             'auto' : 'data' if no axis is > 4x any other axis, otherwise 'cube'
+            
         Default is 'data'.
     label_axes : bool
         Plot axes label names and scales. Defalut is True.

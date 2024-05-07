@@ -115,8 +115,8 @@ def als_lasso(
     random_state : {None, int, numpy.random.RandomState}, default is None
         Random state used to initialized factor matrices and weights.
     threads : int, default is None
-        Maximum number of threads allocated to the algorithm. If `threads`=None, 
-        then all available threads will be used.
+        Maximum number of threads allocated to the algorithm. 
+        If `threads` = None, then all available threads will be used.
     verbose : int, default is 0
         Level of verbosity.
     return_losses : bool, default is False
@@ -129,9 +129,6 @@ def als_lasso(
             the relative contributio of each factor.
         * factors : List of factors of the CP decomposition where factor matrix 
             `i` is of shape `(tensor.shape[i], rank)`
-    losses : list
-        A list of loss values calculated at each iteration of the algorithm. 
-        Only returned when `return_losses` is set to True.
     """    
     # wrap operations in threadpool limit
     with threadpool_limits(limits=threads, user_api='blas'):
@@ -277,7 +274,7 @@ class SparseCP(DecompositionMixin):
     The `lambdas` values indicate the sparsity-inducing l1 regularization 
     coefficient to be applied to each mode when the model is fit to data. The 
     factor matrices indicated in `nonneg_modes` are forced to be non-negative, 
-    and if `norm_constraint`=True, the L2 norm of any factor matrix without an 
+    and if `norm_constraint` = True, the L2 norm of any factor matrix without an 
     L1 sparsity penalty (lambda=0.0) is constrained to be unit length.
     
     Parameters
@@ -292,7 +289,7 @@ class SparseCP(DecompositionMixin):
     nonneg_modes : [int], default is None
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
-        If `norm_constraint`=True, the L2 norm of any factor matrix without an 
+        If `norm_constraint` = True, the L2 norm of any factor matrix without an 
         L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
         sparsity penalty of every mode is 0.0, the L2 norm constraint is 
         automatically turned off in every mode.
@@ -382,7 +379,7 @@ class SparseCP(DecompositionMixin):
             Input data tensor.
         threads : int, default is None
             Maximum number of threads allocated to the algorithm. If 
-            `threads`=None, then all available threads will be used.
+            `threads` = None, then all available threads will be used.
         verbose : int, default is 0
             Level of verbosity.
         return_losses : bool, default is False

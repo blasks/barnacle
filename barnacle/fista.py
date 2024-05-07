@@ -280,7 +280,7 @@ def minimise_fista(
     x : numpy.ndarray
         The solution `x` that minimizes the given optimization problem.
     losses : list
-        If `return_err`=True, a list of iteration errors.
+        If `return_err` = True, a list of iteration errors.
     """
     losses = [None] * n_iter
     # if provided data is all zeros, don't run fista, just return zero matrix
@@ -440,7 +440,7 @@ def fista_solve(
     x : numpy.ndarray
         The solution `x` that minimizes the given optimization problem.
     losses : list
-        If `return_err`=True, a list of iteration errors.
+        If `return_err` = True, a list of iteration errors.
     """
     if normalize and l1_reg:
         raise ValueError('Cannot normalize and apply l1 regularization on same mode.')
