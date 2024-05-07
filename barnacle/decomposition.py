@@ -105,7 +105,7 @@ def als_lasso(
         
         .. math::
         
-            \frac{|l^{(n-1)} - l^{(n)}|}{\max(l^{(n)}, 1)} < t
+            \frac{\|l^{(n-1)} - l^{(n)}\|}{\max(l^{(n)}, 1)} < t
         
         where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
         :math: `t` is the tolerance threshold set by ``tol``. 
@@ -311,7 +311,7 @@ class SparseCP(DecompositionMixin):
         
         .. math::
         
-            \frac{|l^{(n-1)} - l^{(n)}|}{\max(l^{(n)}, 1)} < t
+            \frac{\|l^{(n-1)} - l^{(n)}\|}{\max(l^{(n)}, 1)} < t
         
         where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
         :math: `t` is the tolerance threshold set by ``tol``. 
