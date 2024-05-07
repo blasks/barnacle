@@ -99,10 +99,16 @@ def als_lasso(
     tol : float, default is 1e-6
         Convergence tolerance. The algorithm is considered to have found the 
         global minimum when the change in loss from one iteration 
-        to the next falls below the `tol` threshold. Note that the change in
-        loss calculation is relative when loss > 1 and absolute when loss <= 1. 
-        In other words, convergence is defined as:
-            abs(loss[-2] - loss[-1]) / max(loss[-1], 1) < `tol`
+        to the next falls below the `tol` threshold. The calculated change in
+        loss is relative when loss > 1 and absolute when loss <= 1. In other 
+        words, convergence is defined as :
+        
+        .. math::
+        
+            \frac{|l^{(n-1)} - l^{(n)}|}{\max(l^{(n)}, 1)} < t
+        
+        where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
+        :math: `t` is the tolerance threshold set by ``tol``. 
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, a warning will be raised.
@@ -299,10 +305,16 @@ class SparseCP(DecompositionMixin):
     tol : float, default is 1e-6
         Convergence tolerance. The algorithm is considered to have found the 
         global minimum when the change in loss from one iteration 
-        to the next falls below the `tol` threshold. Note that the change in
-        loss calculation is relative when loss > 1 and absolute when loss <= 1. 
-        In other words, convergence is defined as:
-            abs(loss[-2] - loss[-1]) / max(loss[-1], 1) < `tol`
+        to the next falls below the `tol` threshold. The calculated change in
+        loss is relative when loss > 1 and absolute when loss <= 1. In other 
+        words, convergence is defined as :
+        
+        .. math::
+        
+            \frac{|l^{(n-1)} - l^{(n)}|}{\max(l^{(n)}, 1)} < t
+        
+        where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
+        :math: `t` is the tolerance threshold set by ``tol``. 
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, a warning will be raised.
@@ -318,7 +330,7 @@ class SparseCP(DecompositionMixin):
             cp decomposition model parameters.
         * If fit to data, a SparseCP object containing `n_initializations` 
             initialized and fit models, with the best fit initialization
-            accessible via the SparseCP.decomposition_ property.
+            accessible via the ``SparseCP.decomposition_`` property.
     """
     def __init__(
         self, 

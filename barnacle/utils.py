@@ -167,8 +167,7 @@ def plot_factors_heatmap(
         list of ints = manual assignment of height ratios
     mask_thold : tuple of floats
         Interval (inclusive) between which all values will be masked out of heatmaps. 
-        Example: 
-            (0, 0) = only values that are exactly zero will be masked.
+        Example: (0, 0) = only values that are exactly zero will be masked.
     reference_factors : list of numpy.ndarray, optional
         A second set of baseline factors to be plotted. Sizes and shapes are 
         assumed to be the same as in `factors`. If not None, `reference_factors`

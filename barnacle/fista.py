@@ -405,9 +405,11 @@ def fista_solve(
     Where `reg` is an l1 regularisation coefficient, and `g(x)` is a proximal 
     operator applied to `x`. The proximal operator can optionally incorporate 
     (individually or in combination): 
-        a) l1 regularization
-        b) non-negativity constraint
-        c) l2 norm constraint: ||x|| <= 1
+    
+        - l1 regularization
+        - non-negativity constraint
+        - l2 norm constraint: ||x|| <= 1
+        
     L1 regularization and l2 norm constraint cannot be applied in combination.
     
     Optimization is acheived using the Fast Iterative Shrinkage Thresholding

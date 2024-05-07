@@ -229,8 +229,7 @@ def simulated_sparse_tensor(
         Distributions from which the factor matrices will be drawn. Must be the
         same length as the `shape` parameter and must have a .rvs() method 
         for drawing random values, and a `random_state` attribute specifying state.
-        Example:
-            scipy.stats.uniform()
+        Example: `scipy.stats.uniform()`
     weights : list of floats, optional
         Weights to assign to each factor. If not set, then defaults to ones.
     random_state : {None, int, np.random.RandomState}
