@@ -19,7 +19,6 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.bibtex',
 ]
 
 templates_path = ['_templates']
