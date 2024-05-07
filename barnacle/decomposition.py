@@ -57,10 +57,10 @@ def als_lasso(
     verbose=0, 
     return_losses=False
 ):
-    """Computes a rank-`rank` decomposition of `tensor` such that::
+    r"""Computes a rank-`rank` decomposition of `tensor` such that::
     
         tensor = [|weights; factors[0], ..., factors[-1]|].
-        
+    
     The algorithm aims to minimize the loss as defined by::
     
         loss = `tl.norm(tensor - reconstruction, 2) ** 2 + penalties`
@@ -68,7 +68,7 @@ def als_lasso(
             sparsity coefficients and the L1 norms of the factor matrices.
             
     Furthermore, the factor matrices indicated in `nonneg_modes` are forced
-    to be non-negative, and if `norm_constraint`=True, the L2 norm of any 
+    to be non-negative, and if `norm_constraint` = True, the L2 norm of any 
     factor matrix without an L1 sparsity penalty (lambda=0.0) is constrained to 
     be unit length.
     
@@ -86,7 +86,7 @@ def als_lasso(
     nonneg_modes : [int], default is None
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
-        If `norm_constraint`=True, the L2 norm of any factor matrix without an 
+        If `norm_constraint` = True, the L2 norm of any factor matrix without an 
         L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
         sparsity penalty of every mode is 0.0, the L2 norm constraint is 
         automatically turned off in every mode.
@@ -107,8 +107,8 @@ def als_lasso(
         
             \frac{\|l^{(n-1)} - l^{(n)}\|}{\max(l^{(n)}, 1)} < t
         
-        where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
-        :math: `t` is the tolerance threshold set by `tol`. 
+        where :math:`l^{(n)}` is the loss at iteration :math:`n`, and
+        :math:`t` is the tolerance threshold set by `tol`. 
         
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
@@ -123,7 +123,8 @@ def als_lasso(
     return_losses : bool, default is False
         Activate return of iteration loss values at each iteration.
         
- 
+    Returns
+    -------
     cp_tensor : (weight, factors)
         * weights : 1D array of shape (rank,) that contains the weights denoting
             the relative contributio of each factor.
@@ -268,7 +269,7 @@ def als_lasso(
 
 
 class SparseCP(DecompositionMixin):
-    """Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
+    r"""Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
     
     Parameterizes a rank-`rank` decomposition of `tensor` such that::
     
@@ -280,7 +281,8 @@ class SparseCP(DecompositionMixin):
     and if `norm_constraint` = True, the L2 norm of any factor matrix without an 
     L1 sparsity penalty (lambda=0.0) is constrained to be unit length.
     
-    
+    Parameters
+    ----------
     rank : int
         Number of components.
     lambdas : [float]
@@ -312,8 +314,8 @@ class SparseCP(DecompositionMixin):
         
             \frac{\|l^{(n-1)} - l^{(n)}\|}{\max(l^{(n)}, 1)} < t
         
-        where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
-        :math: `t` is the tolerance threshold set by ``tol``. 
+        where :math:`l^{(n)}` is the loss at iteration :math:`n`, and
+        :math:`t` is the tolerance threshold set by ``tol``. 
         
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
