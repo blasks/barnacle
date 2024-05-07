@@ -108,7 +108,8 @@ def als_lasso(
             \frac{\|l^{(n-1)} - l^{(n)}\|}{\max(l^{(n)}, 1)} < t
         
         where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
-        :math: `t` is the tolerance threshold set by ``tol``. 
+        :math: `t` is the tolerance threshold set by `tol`. 
+        
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, a warning will be raised.
@@ -122,13 +123,15 @@ def als_lasso(
     return_losses : bool, default is False
         Activate return of iteration loss values at each iteration.
         
-    Returns
-    -------
+ 
     cp_tensor : (weight, factors)
         * weights : 1D array of shape (rank,) that contains the weights denoting
             the relative contributio of each factor.
         * factors : List of factors of the CP decomposition where factor matrix 
             `i` is of shape `(tensor.shape[i], rank)`
+    losses : list
+            A list of loss values calculated at each iteration of the algorithm. 
+            Only returned when `return_losses` is set to True.
     """    
     # wrap operations in threadpool limit
     with threadpool_limits(limits=threads, user_api='blas'):
@@ -277,8 +280,7 @@ class SparseCP(DecompositionMixin):
     and if `norm_constraint` = True, the L2 norm of any factor matrix without an 
     L1 sparsity penalty (lambda=0.0) is constrained to be unit length.
     
-    Parameters
-    ----------
+    
     rank : int
         Number of components.
     lambdas : [float]
@@ -312,6 +314,7 @@ class SparseCP(DecompositionMixin):
         
         where :math: `l^{(n)}` is the loss at iteration :math: `n`, and
         :math: `t` is the tolerance threshold set by ``tol``. 
+        
     n_iter_max : int, default is 1000
         Maximum number of iterations. If the algorithm fails to converge 
         according to the `tol` threshold set, a warning will be raised.
