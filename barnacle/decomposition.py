@@ -74,6 +74,7 @@ def als_lasso(
     
     Parameters
     ----------
+    
     tensor : numpy.ndarray
         Input data tensor.
     rank : int
@@ -124,7 +125,9 @@ def als_lasso(
         
     Returns
     -------
+    
     cp_tensor : (weight, factors)
+    
         * weights : 1D array of shape (rank,) that contains the weights denoting
             the relative contributio of each factor.
         * factors : List of factors of the CP decomposition where factor matrix 
@@ -282,6 +285,7 @@ class SparseCP(DecompositionMixin):
     
     Parameters
     ----------
+    
     rank : int
         Number of components.
     lambdas : [float]
@@ -325,7 +329,9 @@ class SparseCP(DecompositionMixin):
         
     Returns
     -------
+    
     SparseCP : 
+    
         * If not yet fit to data, a SparseCP object parameterized with sparse
             cp decomposition model parameters.
         * If fit to data, a SparseCP object containing `n_initializations` 
