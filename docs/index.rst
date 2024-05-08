@@ -3,7 +3,7 @@
    contain the root `toctree` directive.
 
 Welcome to the documentation for barnacle!
-=====================================
+==========================================
 
 .. toctree::
    :maxdepth: 2
