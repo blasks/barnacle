@@ -6,4 +6,3 @@ API Reference
    :caption: Contents:
    
    autodoc/barnacle
-   autodoc/modules
