@@ -20,7 +20,8 @@ sys.path.insert(0, os.path.abspath('../'))
 project = 'barnacle'
 copyright = '2024, Stephen Blaskowski, Marie Roald'
 author = 'Stephen Blaskowski, Marie Roald'
-release = '0.1.0'
+version = '0.1.0'
+release = version
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
