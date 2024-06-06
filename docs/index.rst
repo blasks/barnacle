@@ -13,7 +13,7 @@ Welcome to Barnacle's documentation!
    installation
    model
    omics
-   auto_examples/index
+   examples
    api
    references
 
