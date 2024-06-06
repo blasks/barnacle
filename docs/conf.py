@@ -31,12 +31,14 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
+    'sphinxcontrib.bibtex',
 ]
 
 napoleon_google_docstring = False
 napoleon_use_param = False
 napoleon_use_ivar = True
 autodoc_default_options = {"autosummary": True}
+bibtex_bibfiles = ['references.bib']
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
