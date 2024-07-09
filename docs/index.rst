@@ -1,4 +1,4 @@
-.. MatCoupLy documentation master file.
+.. Barnacle documentation master file.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -14,7 +14,7 @@ Welcome to Barnacle's documentation!
    model
    omics
    examples
-   api
+   autodoc/barnacle
    references
 
 Indices and tables
