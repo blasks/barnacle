@@ -383,7 +383,7 @@ def recovery_relevance(true_clusters, inferred_clusters):
     between 0 and 1. 
     
     For a complete description, see Methods section and Supplementary Figure 1
-    of Saelens et al. (2018).
+    of Saelens et al. (2018) :cite:p:`saelens2018`.
     
     Parameters
     ----------
@@ -450,7 +450,7 @@ def pairs_precision_recall(true_clusters, inferred_clusters):
     `inferred_clusters`. Both metrics range between 0 and 1.
     
     For a complete description, see Methods section and Supplementary Figure 1
-    of Saelens et al. (2018).
+    of Saelens et al. (2018) :cite:p:`saelens2018`.
     
     Parameters
     ----------

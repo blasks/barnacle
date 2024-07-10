@@ -250,9 +250,9 @@ def minimise_fista(
     
         min_x ||Ax - b||^2 + reg * g(x)
         
-    Optimization is acheived using the Fast Iterative Shrinkage Thresholding
-    Algorithm (FISTA) with backtracking, as described in Beck & Teboulle (2009), 
-    in combination with adaptive restart as described in O'Donoghue & Candès (2012).
+    Optimization is acheived using the Fast Iterative Shrinkage Thresholding Algorithm (FISTA) 
+    with backtracking, as described in Beck & Teboulle (2009) :cite:p:`beck2009fast`, in combination 
+    with adaptive restart as described in O'Donoghue & Candès (2012) :cite:p:`o2015adaptive`.
     
     Parameters
     ----------
@@ -412,10 +412,10 @@ def fista_solve(
         
     L1 regularization and l2 norm constraint cannot be applied in combination.
     
-    Optimization is acheived using the Fast Iterative Shrinkage Thresholding
-    Algorithm (FISTA) with backtracking, as described in Beck & Teboulle (2009), 
-    in combination with adaptive restart as described in O'Donoghue & Candès (2012).
-    
+    Optimization is acheived using the Fast Iterative Shrinkage Thresholding Algorithm (FISTA) 
+    with backtracking, as described in Beck & Teboulle (2009) :cite:p:`beck2009fast`, in combination 
+    with adaptive restart as described in O'Donoghue & Candès (2012) :cite:p:`o2015adaptive`.
+
     Parameters
     ----------
     lhs : numpy.ndarray

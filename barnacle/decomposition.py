@@ -68,14 +68,14 @@ def als_lasso(
         \|Y - \hat{Y}\|^2 + \lambda_0\|F_0\|_1 + ... + \lambda_{-1}\|F_{-1}\|_1
         
     where :math:`Y` is the input `tensor`, :math:`\hat{Y}` is the model reconstruction
-    of the input tensor, and the following terms encompass the L1 norm (calculated column-wise)
+    of the input tensor, and the following terms encompass the l1 norm (calculated column-wise)
     of each factor matrix :math:`F_i` multiplied by its corresponding sparsity coefficient 
     :math:`\lambda_i`. Any mode for which :math:`\lambda` has been set to zero will incur no
     sparsity penalty.
             
     Furthermore, the factor matrices indicated in the `nonneg_modes` parameter are forced
-    to be non-negative, and if `norm_constraint` = True, the L2 norm of any 
-    factor matrix without an L1 sparsity penalty (:math:`\lambda=0.0`) is constrained to 
+    to be non-negative, and if `norm_constraint` = True, the l2 norm of any 
+    factor matrix without an l1 sparsity penalty (:math:`\lambda=0.0`) is constrained to 
     be unit length.
     
     Parameters
@@ -92,9 +92,9 @@ def als_lasso(
     nonneg_modes : [int], default is None
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
-        If `norm_constraint` = True, the L2 norm of any factor matrix without an 
-        L1 sparsity penalty (:math:`\lambda=0.0`) is constrained to unit length. If the
-        sparsity penalty of every mode is 0.0, the L2 norm constraint is 
+        If `norm_constraint` = True, the l2 norm of any factor matrix without an 
+        l1 sparsity penalty (:math:`\lambda=0.0`) is constrained to unit length. If the
+        sparsity penalty of every mode is 0.0, the l2 norm constraint is 
         automatically turned off in every mode.
     init : {'random', CPTensor}, default is 'random'.
         Values used to initialized the factor matrices. If `init = 'random'` 
@@ -160,7 +160,7 @@ def als_lasso(
                 'is not equal to the number of modes in `tensor`.'
             )
         if any(lambdas < 0):
-            raise ValueError('L1 sparsity penalty must be nonnegative.')
+            raise ValueError('l1 sparsity penalty must be nonnegative.')
         
         # set normalization modes
         if not norm_constraint or not np.any(lambdas):
@@ -233,7 +233,7 @@ def als_lasso(
             factors_norm_sq = tl.cp_tensor.cp_norm((weights, factors))**2
             sse = tensor_norm_sq + factors_norm_sq - 2*iprod
 
-            # calculate L1 sparsity penalties
+            # calculate l1 sparsity penalties
             factor_l1_norms = np.array([tl.norm(f, 1) for f in factors])
             penalties = tl.dot(lambdas, factor_l1_norms)
             # compute loss
@@ -275,7 +275,7 @@ def als_lasso(
 
 
 class SparseCP(DecompositionMixin):
-    r"""Sparse CP decomposition by L1-penalized Alternating Least Squares (ALS)
+    r"""Sparse CP decomposition by l1-penalized Alternating Least Squares (ALS)
     
     Parameterizes a rank-`rank` decomposition of `tensor` such that::
     
@@ -284,8 +284,8 @@ class SparseCP(DecompositionMixin):
     The `lambdas` values indicate the sparsity-inducing l1 regularization 
     coefficient to be applied to each mode when the model is fit to data. The 
     factor matrices indicated in `nonneg_modes` are forced to be non-negative, 
-    and if `norm_constraint` = True, the L2 norm of any factor matrix without an 
-    L1 sparsity penalty (lambda=0.0) is constrained to be unit length.
+    and if `norm_constraint` = True, the l2 norm of any factor matrix without an 
+    l1 sparsity penalty (lambda=0.0) is constrained to be unit length.
     
     Parameters
     ----------
@@ -299,9 +299,9 @@ class SparseCP(DecompositionMixin):
     nonneg_modes : [int], default is None
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
-        If `norm_constraint` = True, the L2 norm of any factor matrix without an 
-        L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
-        sparsity penalty of every mode is 0.0, the L2 norm constraint is 
+        If `norm_constraint` = True, the l2 norm of any factor matrix without an 
+        l1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
+        sparsity penalty of every mode is 0.0, the l2 norm constraint is 
         automatically turned off in every mode.
     init : {'random', CPTensor}, default is 'random'.
         Values used to initialized the factor matrices. If `init == 'random'` 
