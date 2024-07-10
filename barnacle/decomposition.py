@@ -61,11 +61,17 @@ def als_lasso(
     
         tensor = [|weights; factors[0], ..., factors[-1]|].
     
-    The algorithm aims to minimize the loss as defined by::
+    The algorithm aims to minimize the loss as defined by:
+
+    .. math::
     
-        loss = `tl.norm(tensor - reconstruction, 2) ** 2 + penalties`
-            where `penalties` are calculated as the dot product of the `lambdas` 
-            sparsity coefficients and the L1 norms of the factor matrices.
+        \|\|Y - \hat{Y}\|\|^2 + \sum_{i}\lambda_i\|\|F_i\|\|_1
+        
+    
+    where :math:`Y` is the input `tensor`, :math:`\hat{Y}` is the model reconstruction
+    of the input tensor, and the second term encompasses the L1 norm of each factor matrix
+    (calculated column-wise) multiplied by its corresponding sparsity coefficient, provided
+    in the vector `lambda`. 
             
     Furthermore, the factor matrices indicated in `nonneg_modes` are forced
     to be non-negative, and if `norm_constraint` = True, the L2 norm of any 
