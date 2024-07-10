@@ -65,17 +65,17 @@ def als_lasso(
 
     .. math::
     
-        \|\|Y - \hat{Y}\|\|^2 + \sum_{i}\lambda_i\|\|F_i\|\|_1
+        \|Y - \hat{Y}\|^2 + \lambda_0\|F_0\|_1 + ... + \lambda_{-1}\|F_{-1}\|_1
         
-    
     where :math:`Y` is the input `tensor`, :math:`\hat{Y}` is the model reconstruction
-    of the input tensor, and the second term encompasses the L1 norm of each factor matrix
-    (calculated column-wise) multiplied by its corresponding sparsity coefficient, provided
-    in the vector `lambda`. 
+    of the input tensor, and the following terms encompass the L1 norm (calculated column-wise)
+    of each factor matrix :math:`F_i` multiplied by its corresponding sparsity coefficient 
+    :math:`\lambda_i`. Any mode for which :math:`\lambda` has been set to zero will incur no
+    sparsity penalty.
             
-    Furthermore, the factor matrices indicated in `nonneg_modes` are forced
+    Furthermore, the factor matrices indicated in the `nonneg_modes` parameter are forced
     to be non-negative, and if `norm_constraint` = True, the L2 norm of any 
-    factor matrix without an L1 sparsity penalty (lambda=0.0) is constrained to 
+    factor matrix without an L1 sparsity penalty (:math:`\lambda=0.0`) is constrained to 
     be unit length.
     
     Parameters
@@ -93,13 +93,13 @@ def als_lasso(
         List of modes forced to be non-negative.
     norm_constraint : bool, default is True
         If `norm_constraint` = True, the L2 norm of any factor matrix without an 
-        L1 sparsity penalty (lambda=0.0) is constrained to unit length. If the
+        L1 sparsity penalty (:math:`\lambda=0.0`) is constrained to unit length. If the
         sparsity penalty of every mode is 0.0, the L2 norm constraint is 
         automatically turned off in every mode.
     init : {'random', CPTensor}, default is 'random'.
-        Values used to initialized the factor matrices. If `init == 'random'` 
+        Values used to initialized the factor matrices. If `init = 'random'` 
         then factor matrices are initialized with uniform distribution using 
-        `random_state`. If init is a previously initialized `cp tensor`, any 
+        `random_state`. If `init` is a previously initialized `cp tensor`, any 
         weights are incorporated into the last factor, and then the initial 
         weight values for the output decomposition are set to '1'.
     tol : float, default is 1e-6
@@ -123,7 +123,7 @@ def als_lasso(
         Random state used to initialized factor matrices and weights.
     threads : int, default is None
         Maximum number of threads allocated to the algorithm. 
-        If `threads` = None, then all available threads will be used.
+        If `threads = None`, then all available threads will be used.
     verbose : int, default is 0
         Level of verbosity.
     return_losses : bool, default is False
@@ -133,12 +133,12 @@ def als_lasso(
     -------
     cp_tensor : (weight, factors)
         * weights : 1D array of shape (rank,) that contains the weights denoting
-            the relative contributio of each factor.
+            the relative contribution of each factor.
         * factors : List of factors of the CP decomposition where factor matrix 
             `i` is of shape `(tensor.shape[i], rank)`
     losses : list
-            A list of loss values calculated at each iteration of the algorithm. 
-            Only returned when `return_losses` is set to True.
+        A list of loss values calculated at each iteration of the algorithm. 
+        Only returned when `return_losses` is set to True.
     """    
     # wrap operations in threadpool limit
     with threadpool_limits(limits=threads, user_api='blas'):
