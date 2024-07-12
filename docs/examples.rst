@@ -1,9 +1,8 @@
 Example Gallery
 ===============
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   notebooks/Generate Simulated Data Tensor
-   
+.. nbgallery::
+   notebooks/simulated-data
+   notebooks/decomposition
+   notebooks/cross-validation
+   notebooks/evaluate-model

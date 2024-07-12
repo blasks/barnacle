@@ -28,6 +28,7 @@ release = version
 
 extensions = [
     'nbsphinx', 
+    'sphinx_gallery.load_style', 
     'sphinx.ext.autodoc', 
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
