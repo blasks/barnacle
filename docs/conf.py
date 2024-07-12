@@ -33,7 +33,7 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
     'sphinxcontrib.bibtex',
-    'IPython.sphinxext.ipython_console_highlighting'
+    # 'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 napoleon_google_docstring = False
