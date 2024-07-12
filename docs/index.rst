@@ -12,7 +12,7 @@ Welcome to Barnacle's documentation!
    about_barnacle
    installation
    model
-   ../examples/omics
+   omics
    examples
    autodoc/barnacle
    references
