@@ -1,4 +1,9 @@
 Example Gallery
 ===============
 
-There will eventually be an example gallery
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   notebooks/Generate Simulated Data Tensor
+   

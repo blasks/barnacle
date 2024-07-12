@@ -27,6 +27,7 @@ release = version
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
+    'nbsphinx', 
     'sphinx.ext.autodoc', 
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
