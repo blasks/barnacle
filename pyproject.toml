@@ -35,7 +35,7 @@ ipython = "^8.26.0"
 pytest = "^7.2.0"
 pylint = "^2.15.8"
 pytest-xdist = "^3.1.0"
-notebook = "^6.5.2"
+notebook = "^6.5.6"
 tensorly-lab = {git = "https://github.com/tensorly/lab.git"}
 h5py = "^3.8.0"
 netcdf4 = "^1.6.2"
