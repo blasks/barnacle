@@ -259,6 +259,6 @@ def simulated_sparse_tensor(
             random_state=rns, 
             data_rvs=dist.rvs
         )
-        factors.append(factor.A)
+        factors.append(factor.toarray())
     sim_cp = SimSparseCPTensor((weights, factors))
     return sim_cp
