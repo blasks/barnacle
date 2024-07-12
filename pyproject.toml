@@ -26,20 +26,19 @@ scipy = "^1.9.0"
 plotly = "^5.13.1"
 matplotlib = "^3.7.0"
 tensorly-viz = "^0.1.7"
+notebook = "^6.5.6"
+sphinx = "^7.3.7"
+sphinxcontrib-bibtex = "^2.6.2"
+nbsphinx = "^0.9.4"
+sphinx-gallery = "^0.16.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"
 pylint = "^2.15.8"
 pytest-xdist = "^3.1.0"
-notebook = "^6.5.6"
 tensorly-lab = {git = "https://github.com/tensorly/lab.git"}
 h5py = "^3.8.0"
 netcdf4 = "^1.6.2"
-sphinx = "^7.3.7"
-sphinxcontrib-bibtex = "^2.6.2"
-nbsphinx = "^0.9.4"
-ipython = "^8.26.0"
-sphinx-gallery = "^0.16.0"
 
 [tool.pylint.typecheck]
 generated-members = "tensorly.tenalg.outer"
