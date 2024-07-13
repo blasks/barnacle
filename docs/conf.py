@@ -43,6 +43,9 @@ napoleon_use_ivar = True
 autodoc_default_options = {'autosummary': True}
 bibtex_bibfiles = ['references.bib']
 bibtex_default_style = 'plain'
+nbsphinx_thumbnails = {
+    'notebooks/simulated-data': 'figures/sim-tensor.png',
+}
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
