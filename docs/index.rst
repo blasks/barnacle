@@ -7,9 +7,9 @@ Welcome to Barnacle's documentation!
 
 Barnacle is a Python package for fitting 
 :doc:`sparse tensor decomposition models<model>`.
-These models are powerful tools for unsupervised analysis
-of complex, multi-way datasets, in which a response variable has been measured
-across three or more modes of variation. Barnacle was 
+These models are useful tools for analyzing multi-way datasets, 
+in which a response variable has been measured
+in regards to three or more modes of variation. Barnacle was 
 originally developed for the purpose of analysing metatranscriptomic datasets, 
 but could feasibly be applied to any multi-way dataset. To jump right
 into using Barnacle, see the :doc:`installation<installation>` instructions and 

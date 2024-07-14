@@ -79,7 +79,7 @@ Got it. What's it good for?
 ---------------------------
 
 Barnacle is primarily intended as a tool for unsupervised signal discovery. 
-In other words, it can help you figure out the major patterns driving the 
+In other words, it can help you learn major patterns driving the 
 variation in a large multi-way dataset. The sparsity constraint also enables 
 clusters to be derived from components by identifying in each component 
 the elements associated with non-zero weights.
@@ -126,7 +126,7 @@ Once parameterized, the model is fit to data using a modified alternating
 least squares algorithm. We accommodate the constraints placed on 
 each mode by means of the Fast Iterative Shrinkage/Thresholding Algorithm 
 (FISTA) :cite:p:`beck2009fast` with backtracking and adaptive restart 
-:cite:p:`o2015adaptive`. You can find our implementation of this in the 
+:cite:p:`o2015adaptive`. You can find our implementation in the 
 :py:mod:`barnacle.fista` module. 
 
 For a more in-depth technical discussion of the model, 
