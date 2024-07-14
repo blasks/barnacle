@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'barnacle'
+project = 'Barnacle'
 copyright = '2024, Stephen Blaskowski, Marie Roald'
 author = 'Stephen Blaskowski, Marie Roald'
 version = '0.1.0'
