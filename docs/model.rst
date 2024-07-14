@@ -127,7 +127,7 @@ least squares algorithm. We accommodate the constraints placed on
 each mode by means of the Fast Iterative Shrinkage/Thresholding Algorithm 
 (FISTA) :cite:p:`beck2009fast` with backtracking and adaptive restart 
 :cite:p:`o2015adaptive`. You can find our implementation of this in the 
-:doc:`barnacle.fista<barnacle.fista>` module. 
+:doc:`barnacle.fista<autodoc/barnacle/barnacle.fista>` module. 
 
 For a more in-depth technical discussion of the model, 
 please see our publication.
