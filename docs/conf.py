@@ -42,7 +42,7 @@ napoleon_use_param = False
 napoleon_use_ivar = True
 autodoc_default_options = {'autosummary': True}
 bibtex_bibfiles = ['references.bib']
-bibtex_default_style = 'plain'
+bibtex_default_style = 'unsrt'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

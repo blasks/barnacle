@@ -2,7 +2,7 @@ Sparse tensor decomposition
 ===========================
 
 Barnacle was developed to implement a sparse tensor decomposition 
-model. Let's unpack that.
+model. Let's unpack what that means.
 
 What is a tensor?
 -----------------
@@ -127,7 +127,7 @@ least squares algorithm. We accommodate the constraints placed on
 each mode by means of the Fast Iterative Shrinkage/Thresholding Algorithm 
 (FISTA) :cite:p:`beck2009fast` with backtracking and adaptive restart 
 :cite:p:`o2015adaptive`. You can find our implementation of this in the 
-``barnacle.fista`` module. 
+:py:mod:`barnacle.fista` module. 
 
 For a more in-depth technical discussion of the model, 
 please see our publication.
