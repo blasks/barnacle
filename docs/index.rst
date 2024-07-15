@@ -16,8 +16,8 @@ into using Barnacle, see the :doc:`installation<installation>` instructions and
 peruse the :doc:`example gallery<examples>`. Go to the 
 :doc:`model description page<model>` to learn more about Barnacle's 
 implementation of a sparse tensor decomposition model, as well as more 
-information information about tensor decomposition models in general. To learn 
-more about applying Barnacle to metatranscriptomes and other omics datatest, 
+information about tensor decomposition models in general. To learn 
+more about applying Barnacle to metatranscriptomics and other omics datatest, 
 navigate to the :doc:`omics<omics>` page.
 
 This project is dependent on, and we are grateful for the work of many open 
@@ -27,12 +27,12 @@ foundational tensor manipulations. The `Tensorly <https://tensorly.org>`_ websit
 is an excellent resource for tools and information on working with tensors, 
 including tensor decompositions. 
 
-.. figure:: figures/barnacle.png
-   :alt: Illustration of barnacles, coral, a starfish, seashell, and bubbles.
-   :width: 50 %
-   :target: https://www.robinaguilar.com/
+.. .. figure:: figures/barnacle-sticker.svg
+..    :alt: Illustration of barnacles, coral, a starfish, a seashell, and bubbles.
+..    :width: 50 %
+..    :target: https://www.robinaguilar.com/
 
-   Illustration by `Robin Aguilar <https://www.robinaguilar.com/>`_.
+..    Illustration by `Robin Aguilar <https://www.robinaguilar.com/>`_.
 
 Contents
 ========

@@ -2,19 +2,19 @@ Omics analysis
 ==============
 
 Barnacle was initially developed for unsupervised analysis of 
-environmental metatranscriptomics. What does that mean?
+metatranscriptomics. What does that mean?
 
 Omics data
 ----------
 
 Metatranscriptomics is a category of "omics" analysis
-that catalogs and quantifies all of the RNA molecules (transcripts) 
+that aims to catalog all of the RNA molecules (transcripts) 
 in a sample. The "meta" part of the term indicates that the sample contains 
 multiple taxa. As such, metatranscriptomes measures the gene expression of a 
 community of organisms, such as a microbiome. 
 
-Other types of omics data focus on different biological molecules either for 
-a microbiome (meta-omics) or a single organism:
+Other types of omics data focus on different biological molecules, either on 
+the level of a single organism, or a whole community (meta-omics):
 
 - Genomics --> DNA
 - Proteomics --> proteins
@@ -22,27 +22,27 @@ a microbiome (meta-omics) or a single organism:
 - Metabolomics --> metabolites
 
 Omics datasets are often characterized by certain properties that complicate 
-their analysis, including high dimensionality, and technical noise. Metaomics 
+their analysis, including high dimensionality, and technical noise. Meta-omics 
 are further complicated by properties such as overdispersion, variable 
 community composition, and pervasive zero values :cite:p:`zhang2021statistical`. 
-Dealing with this complexity in order to understand insights contained in 
-omics datasets requires specially equipped analytical tools.
+Dealing with this complexity in order to uncover insights from  
+omics data requires specially equipped analytical tools.
 
 Tensor decomposition for omics analysis
 ---------------------------------------
 
-Tensor decomposition tools have previously been applied to omics datasets in 
-order to deal with some of the challenges mentioned above, and reveal patterns 
-structuring the data. For example, a non-negative tensor decomposition method 
-was applied to human gene expression dataset to reveal patterns associated 
+Tensor decomposition models have previously been applied to omics datasets as a 
+means of dealing with some of the challenges mentioned above, and to uncover  
+patterns in the data. For example, a non-negative tensor decomposition method 
+was applied to a human gene expression dataset to reveal patterns associated 
 with particular diseases across tissue types and demographics :cite:p:`wang2019`. 
 
 One of the main advantages of using tensor decomposition models to analyze omics 
 data is that it is an unsupervised technique. This allows researchers to 
-discover patterns structuring the data, independent of their own pre-conceived 
-notions. The unsupervised nature of the analysis also allows un-characterized 
+discover patterns independent of their own pre-conceived notions. 
+The unsupervised nature of the analysis also allows un-characterized 
 genes to be analyzed alongside annotated genes, whereas other analyses tend to 
-throw out these data. In metaomics this functionality is especially important 
+throw out these data. In meta-omics this functionality is especially important 
 because in many datasets over half of the genes have never been previously 
 observed, much less functionally characterized 
 :cite:p:`pavlopoulos2023unraveling`. Tensor decomposition can help generate 
@@ -57,7 +57,7 @@ genes, which may be functionally related. Similarly, in other omics datasets
 Barnacle clusters could help identify groups of other biological molecules with 
 common abundance profiles across samples and conditions. 
 
-Analysis example
+Example analysis
 ----------------
 
 For an in-depth example of using Barnacle for analyzing metatranscriptomics 

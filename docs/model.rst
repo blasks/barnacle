@@ -106,8 +106,8 @@ of the following form:
     
 where :math:`Y` is the input data tensor, :math:`\hat{Y}` is the model 
 reconstruction of the input tensor, and the additional terms encompass the 
-l1 sparsity penalties applied to the factor weights :math:`F_i` applied to each
-of :math:`i` modes, modulated by the corresponding sparsity coefficient 
+l1 sparsity penalties applied to the factor weights of each mode, :math:`F_i`, 
+modulated by the corresponding sparsity coefficient 
 :math:`\lambda_i`. Setting :math:`\lambda` to zero in any mode removes the 
 sparsity constraint from that mode. Additionally, non-negativity constraints 
 can be applied to any mode in conjunction with or in place of sparsity 
