@@ -6,11 +6,15 @@ Barnacle is a Python library that implements a sparse tensor decomposition model
 
 You can install Barnacle and its dependencies by running 
 
-```pip install barnacle```
+'''
+pip install barnacle
+'''
 
 Using Barnacle usually requires interacting with additional libraries. We recommend using virtual environments to manage this library ecosystem. In particular, we used [Poetry](https://python-poetry.org/) environments while developing Barnacle. You can replicate the Barnacle development using the [`pyproject.toml`](https://github.com/blasks/barnacle/blob/main/pyproject.toml) file published in this repository. If you have Poetry downloaded, running
 
-```poetry install``` 
+'''
+poetry install
+'''
 
 in the same directory as the `pyproject.toml` file should set up your environment and install dependencies. For more detailed information, refer to the [Poetry documentation for installing dependencies](https://python-poetry.org/docs/basic-usage/#installing-dependencies). 
 
