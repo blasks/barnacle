@@ -114,6 +114,7 @@ can be applied to any mode in conjunction with or in place of sparsity
 constraints.
 
 The model must be parameterized with two user-supplied values: 
+
 - :math:`R`: dictates "rank", or the number of components in the model
 - :math:`\lambda`: the sparsity coefficient that modulates the level of sparsity in each mode.
 
