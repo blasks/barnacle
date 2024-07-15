@@ -57,8 +57,8 @@ genes, which may be functionally related. Similarly, in other omics datasets
 Barnacle clusters could help identify groups of other biological molecules with 
 common abundance profiles across samples and conditions. 
 
-Example usage
--------------
+Analysis example
+----------------
 
 For an in-depth example of using Barnacle for analyzing metatranscriptomics 
 data, please see our research paper *Simultaneous acclimation to nitrogen 
@@ -69,11 +69,18 @@ analyses in the paper are available in the
 particular, check out the following scripts and notebooks:
 
 - `Normalization and tensorization <https://github.com/blasks/barnacle-manuscript/blob/main/analyses/3-normalization/0-normalization-sctransform.ipynb>`_
-  - Uses `sctransform <https://satijalab.org/seurat/articles/sctransform_vignette>`_ :cite:p:`hafemeister2019normalization` for normalization
-  - Uses `xarray <https://docs.xarray.dev/en/stable/index.html>`_ :cite:p:`hoyer2017xarray` for organizing data into tensors
+    
+    - Uses `sctransform <https://satijalab.org/seurat/articles/sctransform_vignette>`_ :cite:p:`hafemeister2019normalization` for normalization
+    - Uses `xarray <https://docs.xarray.dev/en/stable/index.html>`_ :cite:p:`hoyer2017xarray` for organizing data into tensors
+
 - `Parameter grid search <https://github.com/blasks/barnacle-manuscript/blob/main/analyses/4-fitting/grid-search.py>`_
-  - Performs cross-validated grid search with bootstrapping
+    
+    - Performs cross-validated grid search with bootstrapping
+
 - `Compile bootstraps <https://github.com/blasks/barnacle-manuscript/blob/main/analyses/5-models/0-compile-bootstraps.ipynb>`_
-  - Compiles component bootstraps for models with best fit parameters
+
+    - Compiles component bootstraps for models with best fit parameters
+
 - `Component profiles <https://github.com/blasks/barnacle-manuscript/blob/main/analyses/6-clusters/0-component-profiles.ipynb>`_
-  - Generates summary statistics and profile visualizations for each model component
+    
+    - Generates summary statistics and profile visualizations for each model component
