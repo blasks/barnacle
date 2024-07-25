@@ -27,12 +27,12 @@ foundational tensor manipulations. The `Tensorly <https://tensorly.org>`_ websit
 is an excellent resource for tools and information on working with tensors, 
 including tensor decompositions. 
 
-.. .. figure:: figures/barnacle-sticker.svg
-..    :alt: Illustration of barnacles, coral, a starfish, a seashell, and bubbles.
-..    :width: 50 %
-..    :target: https://www.robinaguilar.com/
+.. figure:: figures/barnacle-sticker.png
+   :alt: Illustration of barnacles, coral, a starfish, a seashell, and bubbles.
+   :width: 50 %
+   :target: https://www.robinaguilar.com/
 
-..    Illustration by `Robin Aguilar <https://www.robinaguilar.com/>`_.
+   Illustration by `Robin Aguilar <https://www.robinaguilar.com/>`_.
 
 Contents
 ========
