@@ -61,9 +61,9 @@ Example analysis
 ----------------
 
 For an in-depth example of using Barnacle for analyzing metatranscriptomics 
-data, please see our research paper `*Simultaneous acclimation to nitrogen and 
+data, please see our research paper: `Simultaneous acclimation to nitrogen and 
 iron scarcity in open ocean cyanobacteria revealed by sparse tensor 
-decomposition of metatranscriptomes* <https://doi.org/10.1101/2024.07.15.603627>`_ 
+decomposition of metatranscriptomes <https://doi.org/10.1101/2024.07.15.603627>`_ 
 :cite:p:`blaskowski2024simultaneous`. All of the scripts used to generate the 
 analyses in the paper are available in the 
 `manuscript repository <https://github.com/blasks/barnacle-manuscript>`_. In 
