@@ -29,9 +29,10 @@ Details on Barnacle usage can be found on the associated [documentation website]
 
 For a more technical discussion of the sparse tensor decomposition model implemented in Barnacle, please see the Methods section of the research article in which we introduce Barnacle:
 
-[Simultaneous acclimation to nitrogen and iron scarcity in open ocean cyanobacteria revealed by sparse tensor decomposition of metatranscriptomes](https://doi.org/10.1101/2024.07.15.603627 )
+_Simultaneous acclimation to nitrogen and iron scarcity in open ocean cyanobacteria revealed by sparse tensor decomposition of metatranscriptomes_
 - Blaskowski, S., Roald, M., Berube, P. M., Braakman, R., & Armbrust, E. V.
 - bioRxiv (pre-print), 2024
+- https://doi.org/10.1101/2024.07.15.603627
 
 ## Usage
 
