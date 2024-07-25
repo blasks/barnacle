@@ -10,7 +10,8 @@ Barnacle is a Python package for fitting
 These models are useful tools for analyzing multi-way datasets, 
 in which a response variable has been measured
 in regards to three or more modes of variation. Barnacle was 
-originally developed for the purpose of analysing metatranscriptomic datasets, 
+originally developed for the purpose of analysing metatranscriptomic datasets 
+:cite:p:`blaskowski2024simultaneous`, 
 but could feasibly be applied to any multi-way dataset. To jump right
 into using Barnacle, see the :doc:`installation<installation>` instructions and 
 peruse the :doc:`example gallery<examples>`. Go to the 

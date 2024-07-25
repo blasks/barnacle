@@ -63,10 +63,10 @@ we again recommend the
 What about the "sparse" part?
 -----------------------------
 
-In statistics, sparsity refers to a data array that primarily consists of 
+In statistics, sparsity is a property of data arrays that primarily consist of 
 zeros. Sparsity can be a challenge in some contexts, or a desireable property 
 in other cases. In our case, we prefer sparse components, because it helps 
-focus our analysis on the most significant patterns and drivers in large, 
+focus our analysis on the most significant patterns in large, 
 complex datasets. 
 
 For this reason, when we fit the tensor decomposition model, we require the 
@@ -84,7 +84,8 @@ variation in a large multi-way dataset. The sparsity constraint also enables
 clusters to be derived from components by identifying in each component 
 the elements associated with non-zero weights.
 
-Barnacle was developed with metatranscriptomic datasets in mind. However, it 
+Barnacle was developed with metatranscriptomic datasets in mind 
+:cite:p:`blaskowski2024simultaneous`. However, it 
 could feasibly be applied to any multi-way dataset, and would be especially
 well suited for other omics datasets. For more on this please see the 
 :doc:`omics<omics>` section.
@@ -131,4 +132,5 @@ each mode by means of the Fast Iterative Shrinkage/Thresholding Algorithm
 :py:mod:`barnacle.fista` module. 
 
 For a more in-depth technical discussion of the model, 
-please see our publication.
+please see the research article in which we introduce Barnacle 
+:cite:p:`blaskowski2024simultaneous`.
