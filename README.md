@@ -27,7 +27,11 @@ Details on Barnacle usage can be found on the associated [documentation website]
     - The example jupyer notebooks can be found [here](https://github.com/blasks/barnacle/tree/main/docs/notebooks)
 - [An API reference of Barnacle modules.](https://barnacle-py.readthedocs.io/en/latest/autodoc/barnacle.html)
 
-For a more technical discussion of the sparse tensor decomposition model implemented in Barnacle, please see the Methods section of the research article in which we introduce Barnacle.
+For a more technical discussion of the sparse tensor decomposition model implemented in Barnacle, please see the Methods section of the research article in which we introduce Barnacle:
+
+[Simultaneous acclimation to nitrogen and iron scarcity in open ocean cyanobacteria revealed by sparse tensor decomposition of metatranscriptomes](https://doi.org/10.1101/2024.07.15.603627 )
+- Blaskowski, S., Roald, M., Berube, P. M., Braakman, R., & Armbrust, E. V.
+- bioRxiv (pre-print), 2024
 
 ## Usage
 
