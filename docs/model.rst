@@ -85,7 +85,7 @@ clusters to be derived from components by identifying in each component
 the elements associated with non-zero weights.
 
 Barnacle was developed with metatranscriptomic datasets in mind 
-:cite:p:`blaskowski2024simultaneous`. However, it 
+:cite:p:`blaskowski2025simultaneous`. However, it 
 could feasibly be applied to any multi-way dataset, and would be especially
 well suited for other omics datasets. For more on this please see the 
 :doc:`omics<omics>` section.
@@ -133,4 +133,4 @@ each mode by means of the Fast Iterative Shrinkage/Thresholding Algorithm
 
 For a more in-depth technical discussion of the model, 
 please see the research article in which we introduce Barnacle 
-:cite:p:`blaskowski2024simultaneous`.
+:cite:p:`blaskowski2025simultaneous`.

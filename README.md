@@ -10,7 +10,7 @@ You can install Barnacle and its dependencies by running
 pip install barnacle
 ```
 
-Using Barnacle usually requires interacting with additional libraries. We recommend using virtual environments to manage this library ecosystem. In particular, we used [Poetry](https://python-poetry.org/) environments while developing Barnacle. You can replicate the Barnacle development using the [`pyproject.toml`](https://github.com/blasks/barnacle/blob/main/pyproject.toml) file published in this repository. If you have Poetry downloaded, running
+Using Barnacle usually requires interacting with additional libraries. We recommend using virtual environments to manage this library ecosystem. In particular, we used [Poetry](https://python-poetry.org/) environments while developing Barnacle. You can replicate the Barnacle development environment using the [`pyproject.toml`](https://github.com/blasks/barnacle/blob/main/pyproject.toml) file published in this repository. If you have Poetry downloaded, running
 
 ```
 poetry install
@@ -27,7 +27,7 @@ Details on Barnacle usage can be found on the associated [documentation website]
     - The example jupyer notebooks can be found [here](https://github.com/blasks/barnacle/tree/main/docs/notebooks)
 - [An API reference of Barnacle modules.](https://barnacle-py.readthedocs.io/en/latest/autodoc/barnacle.html)
 
-For a more technical discussion of the sparse tensor decomposition model implemented in Barnacle, please see the Methods section of the research article in which we introduce Barnacle ([1](https://doi.org/10.1101/2024.07.15.603627)).
+For a more technical discussion of the sparse tensor decomposition model implemented in Barnacle, please see the Methods section of the research article in which we introduce Barnacle ([1](https://doi.org/10.1126/sciadv.adr4310)).
 
 ## Usage
 
@@ -35,5 +35,5 @@ In addition to the [example gallery](https://barnacle-py.readthedocs.io/en/lates
 
 ## References
 
-1. Blaskowski, Stephen, Marie Roald, Paul M. Berube, Rogier Braakman, and E. Virginia Armbrust. "Simultaneous acclimation to nitrogen and iron scarcity in open ocean cyanobacteria revealed by sparse tensor decomposition of metatranscriptomes." bioRxiv (2024): 2024-07. https://doi.org/10.1101/2024.07.15.603627.
+1. Blaskowski, Stephen, Marie Roald, Paul M. Berube, Rogier Braakman, and E. Virginia Armbrust. "Simultaneous acclimation to nitrogen and iron scarcity in open ocean cyanobacteria revealed by sparse tensor decomposition of metatranscriptomes." _Science Advances_ 11, no. 14 (2025). https://doi.org/10.1126/sciadv.adr4310
 

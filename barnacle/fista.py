@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.linalg as sla
 
 
 def l1_prox(x, reg):
