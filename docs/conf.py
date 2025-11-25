@@ -53,3 +53,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store', '*.ipynb_checkpoints']
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'alabaster'
+html_theme_options = {
+    'github_user': 'blasks',
+    'github_repo': 'barnacle',
+    'github_button': True,
+}
