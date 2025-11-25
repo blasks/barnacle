@@ -57,4 +57,6 @@ html_theme_options = {
     'github_user': 'blasks',
     'github_repo': 'barnacle',
     'github_button': True,
+    'github_type': 'star', 
+    'github_count': False,
 }

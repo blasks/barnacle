@@ -19,8 +19,11 @@ peruse the :doc:`example gallery<examples>`. Go to the
 implementation of a sparse tensor decomposition model, as well as more 
 information about tensor decomposition models in general. To learn 
 more about applying Barnacle to metatranscriptomics and other omics datatest, 
-navigate to the :doc:`omics<omics>` page. Also check out the Barnacle GitHub 
-repository at `https://github.com/blasks/barnacle <https://github.com/blasks/barnacle>`_.
+navigate to the :doc:`omics<omics>` page. For detailed discussion of these
+topics and more, check out our `2025 publication in
+Science Advances <https://doi.org/10.1126/sciadv.adr4310>`_ 
+:cite:p:`blaskowski2025simultaneous` as well as the 
+`Barnacle GitHub repository <https://github.com/blasks/barnacle>`_
 
 This project is dependent on, and we are grateful for the work of many open 
 source projects. In particular, we rely on the Python package
